@@ -1,0 +1,57 @@
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    font-size: 24px !important;
+}
+
+.login-action-login {
+    background-color: #1b1c1a;
+}
+
+.login #login_error,
+.login .message,
+.login .success {
+    background-color: #1b1c1a !important;
+    color: #f8f9fa !important;
+    border-left: 4px solid #ae784e !important;
+    box-shadow: none !important;
+}
+
+.login form {
+    background-color: #1b1c1a !important;
+    color: #f8f9fa !important;
+    border: none !important;
+}
+
+#loginform label {
+    font-weight: bold !important;
+}
+
+#user_login,
+#user_pass {
+    font-size: 24px !important;
+}
+
+#user_login:focus,
+#user_pass:focus {
+    outline: 1px solid #ae784e !important;
+    border: 1px solid #ae784e !important;
+    font-size: 24px !important;
+}
+
+.login #backtoblog a,
+.login #nav a {
+    color: #f8f9fa !important;
+    font-weight: bold !important;
+}
+
+.wp-core-ui .button-primary {
+    background: #ae784e !important;
+    border-color: #ae784e !important;
+    font-weight: bold !important;
+}
+
+.dashicons-visibility:before {
+    color: black !important;
+}

@@ -1,0 +1,145 @@
+#shipping-policies-app {
+  max-width: 950px;
+  margin: 20px 0;
+}
+
+#shipping-policies-app .notice {
+  padding: 12px;
+  margin: 15px 0;
+  border-left: 4px solid;
+  background: #fff;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+#shipping-policies-app .notice-success {
+  border-left-color: #46b450;
+}
+
+#shipping-policies-app .notice-error {
+  border-left-color: #dc3232;
+}
+
+#shipping-policies-app .wp-list-table {
+  margin-top: 20px;
+}
+
+#shipping-policies-app .wp-list-table thead {
+  background-color: #f0f0f1;
+}
+
+#shipping-policies-app .wp-list-table th {
+  font-family: "Gotham Bold";
+}
+
+#shipping-policies-app .wp-list-table td {
+  vertical-align: middle;
+}
+
+#shipping-policies-app .icon {
+  width: 16px;
+  height: 16px;
+  line-height: 1;
+}
+
+#shipping-policies-app .bg-white {
+  background: #fff;
+}
+
+#shipping-policies-app input[type="text"],
+#shipping-policies-app select {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #000;
+}
+
+.shipping-policies-legend {
+  background: #f9f9f9;
+  border: 1px solid #e5e5e5;
+  padding: 15px 20px;
+  margin: 20px 0;
+  border-radius: 3px;
+}
+
+.shipping-policies-legend p {
+  font-size: 0.9rem;
+  margin-top: 0;
+}
+
+.shipping-policies-legend ul {
+  margin: 10px 0 0 20px;
+}
+
+.shipping-policies-legend strong {
+  font-family: "Gotham Bold";
+}
+
+.shipping-policies-legend li {
+  font-size: 0.9rem;
+  list-style-type: disc;
+  margin: 5px 0;
+}
+
+.shipping-policies-api-settings {
+  background: #fff;
+  border: 1px solid #ccd0d4;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+  margin: 30px 0;
+  padding: 20px;
+}
+
+.shipping-policies-api-settings h3 {
+  margin-top: 0;
+}
+
+#shipping-policies-app .button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#shipping-policies-app .button-link-delete {
+  background: #fff;
+  color: #a00;
+  border: none;
+}
+
+#shipping-policies-app .button-link-delete:focus {
+  border: none;
+  outline: none;
+}
+
+#shipping-policies-app .button-link-delete:hover {
+  color: #dc3232;
+}
+
+#shipping-policies-app [x-cloak] {
+  display: none !important;
+}
+
+#shipping-policies-app [x-transition] {
+  transition: all 0.3s ease-in-out;
+}
+
+#shipping-policies-app .border-b-none {
+  border-bottom: none;
+}
+
+#shipping-policies-app .text-start {
+  text-align: start;
+}
+
+#shipping-policies-app .text-center {
+  text-align: center;
+}
+
+#shipping-policies-app .text-end {
+  text-align: end;
+}
+@media screen and (max-width: 782px) {
+  #shipping-policies-app .wp-list-table {
+    font-size: 12px;
+  }
+
+  #shipping-policies-app .wp-list-table th,
+  #shipping-policies-app .wp-list-table td {
+    padding: 8px 5px;
+  }
+}
