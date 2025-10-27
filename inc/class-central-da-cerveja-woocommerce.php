@@ -1244,6 +1244,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 				WC()->session->set("cart_shipping_free_{$rate_key}", 0);
 				WC()->session->set("cart_shipping_without_tax_{$rate_key}", null);
 				WC()->session->set("cart_shipping_with_tax_{$rate_key}", null);
+                WC()->session->set("cart_shipping_tax_card_{$rate_key}", null);
                 WC()->session->set("cart_shipping_fee_additional_{$rate_key}", null);
                 WC()->session->set("cart_shipping_fee_additional_percentage_{$rate_key}", null);
 
@@ -1268,6 +1269,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 				$is_subscription = str_contains($rate_key, 'subscription-shipping');
 
 				// Salva valor sem taxa
+                WC()->session->set("cart_shipping_tax_card_{$rate_key}", $this->tax_card);
 				WC()->session->set("cart_shipping_without_tax_{$rate_key}", $original_cost);
 				WC()->session->set("cart_shipping_original_cost_{$rate_key}", $original_cost);
 
@@ -1300,6 +1302,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 				$rates[$rate_key]->add_meta_data('original_cost', $original_cost);
 				$rates[$rate_key]->add_meta_data('shipping_without_tax', $original_cost);
 				$rates[$rate_key]->add_meta_data('shipping_with_tax', $shipping_with_tax);
+                $rates[$rate_key]->add_meta_data('shipping_tax_card', $this->tax_card);
                 $rates[$rate_key]->add_meta_data('shipping_fee_additional', $fee_additional);
                 $rates[$rate_key]->add_meta_data('shipping_fee_additional_percentage', $fee_additional_percentage);
 				$rates[$rate_key]->add_meta_data('shipping_free', $free);
@@ -1360,6 +1363,8 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 'original_cost'                       => 'Frete Original',
                 'shipping_without_tax'                => 'Frete sem taxa',
                 'shipping_with_tax'                   => 'Frete com taxa',
+                'shipping_tax_card'                   => 'Taxa de Cartão',
+                'shipping_fee_additional_percentage'  => 'Percentual da taxa adicional',
                 'shipping_fee_additional'             => 'Taxa adicional'
             ];
             echo '<div class="view">
