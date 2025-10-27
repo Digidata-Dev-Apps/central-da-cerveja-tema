@@ -1363,8 +1363,8 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 'original_cost'                       => 'Frete Original',
                 'shipping_without_tax'                => 'Frete sem taxa',
                 'shipping_with_tax'                   => 'Frete com taxa',
-                'shipping_tax_card'                   => 'Taxa de Cartão',
-                'shipping_fee_additional_percentage'  => 'Percentual da taxa adicional',
+                'shipping_tax_card'                   => 'Taxa de Cartão (%)',
+                'shipping_fee_additional_percentage'  => 'Taxa adicional (%)',
                 'shipping_fee_additional'             => 'Taxa adicional'
             ];
             echo '<div class="view">
@@ -1377,7 +1377,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                     echo '<tr>
                     <th style="font-size: .8rem; width: 240px;">' . esc_html($label) . ':</th>
                     <td><p style="font-size: .8rem">' .
-                        (is_numeric($value) && $key != 'delivery_time' ?
+                        (is_numeric($value) && $key != 'delivery_time' && $key != 'shipping_fee_additional_percentage' && $key != 'shipping_tax_card' ?
                             wc_price((float) $value) : esc_html($value)) .
                         '</p></td>
                 </tr>';
