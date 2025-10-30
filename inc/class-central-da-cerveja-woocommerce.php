@@ -1058,7 +1058,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             $has_free_shipping = $order->get_meta('shipping_free', true) ?? 0;
             
             $shipping_price_difference = floatval($shipping_with_tax) - floatval($shipping_without_tax);
-            $paid_shipping = ($has_free_shipping) ? wc_price($shipping_value_total) : wc_price($shipping_total_value) . " ( " . wc_price($shipping_price_difference) . " )";
+            $paid_shipping = ($has_free_shipping) ? wc_price(0) : wc_price($shipping_total_value) . " ( " . wc_price($shipping_price_difference) . " )";
             $free_shipping = ($has_free_shipping) ? "Sim" : "Não";
             
             $coupon_applied = wc_get_order($order_id)->discount_total > 0 ? true : false;
@@ -1270,11 +1270,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 
 				// Salva valor sem taxa
                 WC()->session->set("cart_shipping_tax_card_{$rate_key}", $this->tax_card);
-				WC()->session->set("cart_shipping_without_tax_{$rate_key}", $original_cost);
 				WC()->session->set("cart_shipping_original_cost_{$rate_key}", $original_cost);
-
-				// Calcula a taxa de cartão se aplicável
-				$tax_amount = (!$is_subscription && $tax_card > 0) ? ($original_cost * ($tax_card / 100)) : 0;
 
                 // Calcula a taxa adicional se aplicável
                 if(isset($settings['fee_additional']) && !empty($settings['fee_additional']) && $settings['fee_additional'] > 0){
@@ -1282,8 +1278,12 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                     $fee_additional = (!$is_subscription) ? ($original_cost * ($fee_additional_percentage / 100)) : 0;
                 }
 
+                // Calcula a taxa de cartão se aplicável
+				$tax_amount = (!$is_subscription && $tax_card > 0) ? (($original_cost + $fee_additional) * ($tax_card / 100)) : 0;
+
 				// Valor com taxa
 				$shipping_with_tax = $original_cost + $tax_amount + $fee_additional;
+                WC()->session->set("cart_shipping_without_tax_{$rate_key}", ($original_cost + $fee_additional));
 				WC()->session->set("cart_shipping_with_tax_{$rate_key}", $shipping_with_tax);
                 WC()->session->set("cart_shipping_fee_additional_{$rate_key}", $fee_additional);
                 WC()->session->set("cart_shipping_fee_additional_percentage_{$rate_key}", $fee_additional_percentage);
@@ -1300,7 +1300,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 
 				// Adiciona metadados ao método de frete
 				$rates[$rate_key]->add_meta_data('original_cost', $original_cost);
-				$rates[$rate_key]->add_meta_data('shipping_without_tax', $original_cost);
+				$rates[$rate_key]->add_meta_data('shipping_without_tax', ($original_cost + $fee_additional));
 				$rates[$rate_key]->add_meta_data('shipping_with_tax', $shipping_with_tax);
                 $rates[$rate_key]->add_meta_data('shipping_tax_card', $this->tax_card);
                 $rates[$rate_key]->add_meta_data('shipping_fee_additional', $fee_additional);
@@ -1361,8 +1361,8 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             $keys = [
                 'delivery_time'                       => 'Prazo de Entrega',
                 'original_cost'                       => 'Frete Original',
-                'shipping_without_tax'                => 'Frete sem taxa',
-                'shipping_with_tax'                   => 'Frete com taxa',
+                'shipping_without_tax'                => 'Frete sem T. Cartão + Adic.',
+                'shipping_with_tax'                   => 'Frete com T. Cartão e Adic.',
                 'shipping_tax_card'                   => 'Taxa de Cartão (%)',
                 'shipping_fee_additional_percentage'  => 'Taxa adicional (%)',
                 'shipping_fee_additional'             => 'Taxa adicional'
