@@ -1361,7 +1361,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             $keys = [
                 'delivery_time'                       => 'Prazo de Entrega',
                 'original_cost'                       => 'Frete Original',
-                'shipping_without_tax'                => 'Frete sem T. Cartão + Adic.',
+                'shipping_without_tax'                => 'Frete Original + Adic.',
                 'shipping_with_tax'                   => 'Frete com T. Cartão e Adic.',
                 'shipping_tax_card'                   => 'Taxa de Cartão (%)',
                 'shipping_fee_additional_percentage'  => 'Taxa adicional (%)',
