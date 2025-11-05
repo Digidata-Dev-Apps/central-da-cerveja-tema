@@ -176,7 +176,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             add_action('wp_ajax_nopriv_cdc_subscription_email_notification', array($this, 'cdc_subscription_email_notification'));
             add_action('wp_ajax_cdc_subscription_email_notification', array($this, 'cdc_subscription_email_notification'));
 
-            add_filter('woocommerce_add_to_cart_redirect', array($this, 'redirect_subscription_to_cart'));
+            //add_filter('woocommerce_add_to_cart_redirect', array($this, 'redirect_subscription_to_cart'));
             add_filter('woocommerce_add_to_cart_validation', array($this, 'mixed_checkout_validation'), 1, 5);
 
             add_action('woocommerce_before_shop_loop', array($this, 'price_filter_on_shop_page'));
