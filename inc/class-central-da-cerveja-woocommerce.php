@@ -213,11 +213,10 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             add_action('wp', array($this, 'remove_from_session_payments_gateway'));
 
             add_action('woocommerce_checkout_process', array($this, 'check_stock_products_checkout'));
-            
-            add_filter('gettext', array($this, 'custom_translate_woocommerce_strings'), 999, 3 );
 
-            add_action( 'woocommerce_customer_save_address', array($this, 'save_subscription_address'), 10, 2 );
+            add_filter('gettext', array($this, 'custom_translate_woocommerce_strings'), 999, 3);
 
+            add_action('woocommerce_customer_save_address', array($this, 'save_subscription_address'), 10, 2);
         }
 
         private function get_wc_shipping_methods()
@@ -805,10 +804,10 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             // Recupera o valor de frete com taxa correspondente
             $shipping_tax = 0;
             if ($chosen_shipping) {
-				$free = WC()->session->get("cart_shipping_free_{$chosen_shipping}", 0);
-				if(!$free){
-					$shipping_tax = WC()->session->get("cart_shipping_with_tax_{$chosen_shipping}", 0);
-				}
+                $free = WC()->session->get("cart_shipping_free_{$chosen_shipping}", 0);
+                if (!$free) {
+                    $shipping_tax = WC()->session->get("cart_shipping_with_tax_{$chosen_shipping}", 0);
+                }
             }
 
             // Novo total: subtotal - descontos + taxas + frete com taxa
@@ -1049,18 +1048,18 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             $shipping_total = $order->get_shipping_total();
             $shipping_value_total = $order->get_meta('shipping_total_value', true);
             $shipping_total_value = !empty($shipping_value_total) ? $shipping_value_total : $shipping_total;
-            
+
             $shipping_without_tax = $order->get_meta('shipping_value', true);
             $shipping_without_tax = !empty($shipping_without_tax) ? number_format($shipping_without_tax, 2) : $shipping_total_value;
             $shipping_with_tax = $order->get_meta('shipping_total_value', true) ?? 0;
-            
-            
+
+
             $has_free_shipping = $order->get_meta('shipping_free', true) ?? 0;
-            
+
             $shipping_price_difference = floatval($shipping_with_tax) - floatval($shipping_without_tax);
             $paid_shipping = ($has_free_shipping) ? wc_price(0) : wc_price($shipping_total_value) . " ( " . wc_price($shipping_price_difference) . " )";
             $free_shipping = ($has_free_shipping) ? "Sim" : "Não";
-            
+
             $coupon_applied = wc_get_order($order_id)->discount_total > 0 ? true : false;
             $insert_tr = $coupon_applied ? "" : "<tr></tr>";
             echo "<tr>
@@ -1118,20 +1117,20 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 $shipping_value = WC()->session->get("cart_shipping_without_tax_{$chosen_shipping}", 0);
                 $shipping_total_value = WC()->session->get("cart_shipping_with_tax_{$chosen_shipping}", 0);
                 $original = WC()->session->get("cart_shipping_original_cost_{$chosen_shipping}", 0);
-				$shipping_free = WC()->session->get("cart_shipping_free_{$chosen_shipping}", 0);
+                $shipping_free = WC()->session->get("cart_shipping_free_{$chosen_shipping}", 0);
                 $shipping_fee_additional_percentage = WC()->session->get("cart_shipping_fee_additional_percentage_{$chosen_shipping}", 0);
                 $shipping_fee_additional = WC()->session->get("cart_shipping_fee_additional_{$chosen_shipping}", 0);
 
 
                 // Valor total do pedido (bruto + desconto)
                 $value = $order->get_total() + $order->get_discount_total();
-				
+
                 // Salva valores no pedido
                 $order->update_meta_data('_shipping_cost', $original);
                 $order->update_meta_data('shipping_value', $shipping_value);
                 $order->update_meta_data('shipping_total_value', $shipping_total_value);
                 $order->update_meta_data('order_value', $value);
-				$order->update_meta_data('shipping_free', $shipping_free);
+                $order->update_meta_data('shipping_free', $shipping_free);
                 $order->update_meta_data('shipping_fee_additional_percentage', $shipping_fee_additional_percentage);
                 $order->update_meta_data('shipping_fee_additional', $shipping_fee_additional);
 
@@ -1176,180 +1175,180 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
         }
 
         /**
-		 * Ajusta dinamicamente os valores dos métodos de envio no carrinho e checkout.
-		 *
-		 * Este método atua como callback do filtro `woocommerce_package_rates`, permitindo
-		 * modificar os custos de frete antes de serem exibidos ao cliente. Ele aplica lógica
-		 * de desconto de frete (inclusive frete grátis) com base no subtotal do carrinho,
-		 * cupons aplicados e configurações personalizadas de frete.
-		 *
-		 * Fluxo da lógica:
-		 *  - Verifica se o carrinho está ativo e não vazio.
-		 *  - Calcula o subtotal líquido do carrinho, considerando cupons de desconto aplicados.
-		 *  - Itera sobre as opções de frete disponíveis.
-		 *  - Obtém as configurações de cada método de envio (cache local por ID de método).
-		 *  - Salva valores originais (sem taxa) em sessão para referência futura.
-		 *  - Aplica cálculo adicional de taxa caso configurado em `$this->tax_card`.
-		 *  - Se atingir a regra de frete grátis definida nas configurações, zera o custo.
-		 *  - Caso contrário, aplica o custo original acrescido da taxa.
-		 *  - Adiciona metadados úteis ao método de envio (valor original, com/sem taxa, frete grátis).
-		 *
-		 * @hooked woocommerce_package_rates
-		 *
-		 * @param array $rates   Lista de objetos `WC_Shipping_Rate` representando os métodos de envio
-		 *                       disponíveis no carrinho/checkout.
-		 * @param array $package Pacote de envio do WooCommerce, contendo dados dos itens do carrinho
-		 *                       agrupados para cálculo de frete.
-		 *
-		 * @return array Lista de métodos de envio atualizada, com valores ajustados e metadados
-		 *               adicionais para uso em templates e outros hooks.
-		 *
-		 * Exemplo de registro:
-		 * add_filter(
-		 *     'woocommerce_package_rates',
-		 *     [$this, 'shipping_discount'],
-		 *     20,
-		 *     2
-		 * );
-		 */
-		public function shipping_discount($rates, $package)
-		{
-			// Verifica se o carrinho está disponível
-			if (is_admin() && !defined('DOING_AJAX')) {
-				return $rates;
-			}
+         * Ajusta dinamicamente os valores dos métodos de envio no carrinho e checkout.
+         *
+         * Este método atua como callback do filtro `woocommerce_package_rates`, permitindo
+         * modificar os custos de frete antes de serem exibidos ao cliente. Ele aplica lógica
+         * de desconto de frete (inclusive frete grátis) com base no subtotal do carrinho,
+         * cupons aplicados e configurações personalizadas de frete.
+         *
+         * Fluxo da lógica:
+         *  - Verifica se o carrinho está ativo e não vazio.
+         *  - Calcula o subtotal líquido do carrinho, considerando cupons de desconto aplicados.
+         *  - Itera sobre as opções de frete disponíveis.
+         *  - Obtém as configurações de cada método de envio (cache local por ID de método).
+         *  - Salva valores originais (sem taxa) em sessão para referência futura.
+         *  - Aplica cálculo adicional de taxa caso configurado em `$this->tax_card`.
+         *  - Se atingir a regra de frete grátis definida nas configurações, zera o custo.
+         *  - Caso contrário, aplica o custo original acrescido da taxa.
+         *  - Adiciona metadados úteis ao método de envio (valor original, com/sem taxa, frete grátis).
+         *
+         * @hooked woocommerce_package_rates
+         *
+         * @param array $rates   Lista de objetos `WC_Shipping_Rate` representando os métodos de envio
+         *                       disponíveis no carrinho/checkout.
+         * @param array $package Pacote de envio do WooCommerce, contendo dados dos itens do carrinho
+         *                       agrupados para cálculo de frete.
+         *
+         * @return array Lista de métodos de envio atualizada, com valores ajustados e metadados
+         *               adicionais para uso em templates e outros hooks.
+         *
+         * Exemplo de registro:
+         * add_filter(
+         *     'woocommerce_package_rates',
+         *     [$this, 'shipping_discount'],
+         *     20,
+         *     2
+         * );
+         */
+        public function shipping_discount($rates, $package)
+        {
+            // Verifica se o carrinho está disponível
+            if (is_admin() && !defined('DOING_AJAX')) {
+                return $rates;
+            }
 
-			// Verifica se o carrinho está vazio
-			if (WC()->cart->is_empty()) {
-				return $rates;
-			}
+            // Verifica se o carrinho está vazio
+            if (WC()->cart->is_empty()) {
+                return $rates;
+            }
 
-			$has_coupon = WC()->cart->get_applied_coupons();
-			$discount_coupon = 0;
+            $has_coupon = WC()->cart->get_applied_coupons();
+            $discount_coupon = 0;
 
-			if (count($has_coupon) > 0) {
-				$discount_coupon = WC()->cart->get_cart_discount_total();
-			}
+            if (count($has_coupon) > 0) {
+                $discount_coupon = WC()->cart->get_cart_discount_total();
+            }
 
-			$subtotal = WC()->cart->get_subtotal();
-			$subtotal = max(0, ($subtotal - $discount_coupon));
+            $subtotal = WC()->cart->get_subtotal();
+            $subtotal = max(0, ($subtotal - $discount_coupon));
 
-			// Cache local das configurações de cada método de frete
-			$shipping_settings_cache = [];
-			$tax_card = $this->tax_card ?? 0;
+            // Cache local das configurações de cada método de frete
+            $shipping_settings_cache = [];
+            $tax_card = $this->tax_card ?? 0;
             $fee_additional_percentage = 0;
             $fee_additional = 0;
-			foreach ($rates as $rate_key => $rate) {
-				// Reseta sessões
-				WC()->session->set("cart_shipping_free_{$rate_key}", 0);
-				WC()->session->set("cart_shipping_without_tax_{$rate_key}", null);
-				WC()->session->set("cart_shipping_with_tax_{$rate_key}", null);
+            foreach ($rates as $rate_key => $rate) {
+                // Reseta sessões
+                WC()->session->set("cart_shipping_free_{$rate_key}", 0);
+                WC()->session->set("cart_shipping_without_tax_{$rate_key}", null);
+                WC()->session->set("cart_shipping_with_tax_{$rate_key}", null);
                 WC()->session->set("cart_shipping_tax_card_{$rate_key}", null);
                 WC()->session->set("cart_shipping_fee_additional_{$rate_key}", null);
                 WC()->session->set("cart_shipping_fee_additional_percentage_{$rate_key}", null);
 
-				// Identificador único do método
-				if (!isset($package['rates'][$rate_key])) {
-					continue;
-				}
+                // Identificador único do método
+                if (!isset($package['rates'][$rate_key])) {
+                    continue;
+                }
 
-				$method_id = $package['rates'][$rate_key]->get_id();
+                $method_id = $package['rates'][$rate_key]->get_id();
 
-				// Cache das configurações
-				if (!isset($shipping_settings_cache[$method_id])) {
-					$shipping_settings_cache[$method_id] = $this->get_shipping_options($method_id);
-				}
+                // Cache das configurações
+                if (!isset($shipping_settings_cache[$method_id])) {
+                    $shipping_settings_cache[$method_id] = $this->get_shipping_options($method_id);
+                }
 
-				$settings = $shipping_settings_cache[$method_id];
+                $settings = $shipping_settings_cache[$method_id];
 
-				// Salva o valor original
-				$original_cost = $rate->cost;
+                // Salva o valor original
+                $original_cost = $rate->cost;
 
-				// Detecta tipo do método
-				$is_subscription = str_contains($rate_key, 'subscription-shipping');
+                // Detecta tipo do método
+                $is_subscription = str_contains($rate_key, 'subscription-shipping');
 
-				// Salva valor sem taxa
+                // Salva valor sem taxa
                 WC()->session->set("cart_shipping_tax_card_{$rate_key}", $this->tax_card);
-				WC()->session->set("cart_shipping_original_cost_{$rate_key}", $original_cost);
+                WC()->session->set("cart_shipping_original_cost_{$rate_key}", $original_cost);
 
                 // Calcula a taxa adicional se aplicável
-                if(isset($settings['fee_additional']) && !empty($settings['fee_additional']) && $settings['fee_additional'] > 0){
+                if (isset($settings['fee_additional']) && !empty($settings['fee_additional']) && $settings['fee_additional'] > 0) {
                     $fee_additional_percentage = $settings['fee_additional'];
                     $fee_additional = (!$is_subscription) ? ($original_cost * ($fee_additional_percentage / 100)) : 0;
                 }
 
                 // Calcula a taxa de cartão se aplicável
-				$tax_amount = (!$is_subscription && $tax_card > 0) ? (($original_cost + $fee_additional) * ($tax_card / 100)) : 0;
+                $tax_amount = (!$is_subscription && $tax_card > 0) ? (($original_cost + $fee_additional) * ($tax_card / 100)) : 0;
 
-				// Valor com taxa
-				$shipping_with_tax = $original_cost + $tax_amount + $fee_additional;
+                // Valor com taxa
+                $shipping_with_tax = $original_cost + $tax_amount + $fee_additional;
                 WC()->session->set("cart_shipping_without_tax_{$rate_key}", ($original_cost + $fee_additional));
-				WC()->session->set("cart_shipping_with_tax_{$rate_key}", $shipping_with_tax);
+                WC()->session->set("cart_shipping_with_tax_{$rate_key}", $shipping_with_tax);
                 WC()->session->set("cart_shipping_fee_additional_{$rate_key}", $fee_additional);
                 WC()->session->set("cart_shipping_fee_additional_percentage_{$rate_key}", $fee_additional_percentage);
 
-				// Verifica se o frete grátis está ativo
-				if (isset($settings['free_shipping']) && $settings['free_shipping'] > 0 && $settings['free_shipping'] < $subtotal) {
-					WC()->session->set("cart_shipping_free_{$rate_key}", 1);
-					$rates[$rate_key]->set_cost(0);
-					$free = 1;
-				} else {
-					$rates[$rate_key]->set_cost($shipping_with_tax);
-					$free = 0;
-				}
+                // Verifica se o frete grátis está ativo
+                if (isset($settings['free_shipping']) && $settings['free_shipping'] > 0 && $settings['free_shipping'] < $subtotal) {
+                    WC()->session->set("cart_shipping_free_{$rate_key}", 1);
+                    $rates[$rate_key]->set_cost(0);
+                    $free = 1;
+                } else {
+                    $rates[$rate_key]->set_cost($shipping_with_tax);
+                    $free = 0;
+                }
 
-				// Adiciona metadados ao método de frete
-				$rates[$rate_key]->add_meta_data('original_cost', $original_cost);
-				$rates[$rate_key]->add_meta_data('shipping_without_tax', ($original_cost + $fee_additional));
-				$rates[$rate_key]->add_meta_data('shipping_with_tax', $shipping_with_tax);
+                // Adiciona metadados ao método de frete
+                $rates[$rate_key]->add_meta_data('original_cost', $original_cost);
+                $rates[$rate_key]->add_meta_data('shipping_without_tax', ($original_cost + $fee_additional));
+                $rates[$rate_key]->add_meta_data('shipping_with_tax', $shipping_with_tax);
                 $rates[$rate_key]->add_meta_data('shipping_tax_card', $this->tax_card);
                 $rates[$rate_key]->add_meta_data('shipping_fee_additional', $fee_additional);
                 $rates[$rate_key]->add_meta_data('shipping_fee_additional_percentage', $fee_additional_percentage);
-				$rates[$rate_key]->add_meta_data('shipping_free', $free);
-			}
+                $rates[$rate_key]->add_meta_data('shipping_free', $free);
+            }
 
-			return $rates;
-		}
+            return $rates;
+        }
 
-		
-		/**
-		 * Customiza o rótulo exibido para métodos de envio no carrinho e checkout.
-		 *
-		 * Este método é usado como callback do filtro `woocommerce_cart_shipping_method_full_label`.
-		 * Ele verifica os metadados do método de envio, e se encontrar a chave `shipping_free`
-		 * marcada como verdadeira, adiciona o texto "Frete Grátis" ao lado do rótulo original.
-		 *
-		 * @param string          $label  Texto atual do rótulo do método de envio (ex: "PAC – R$ 20,00").
-		 * @param WC_Shipping_Rate $method Objeto da classe WooCommerce contendo os dados do método de envio,
-		 *                                 incluindo ID, custo e metadados adicionados dinamicamente por plugins
-		 *                                 ou pela própria lógica de negócio.
-		 *
-		 * @return string Rótulo do método de envio, possivelmente modificado para incluir a indicação de frete grátis.
-		 *
-		 * Exemplo de uso:
-		 * add_filter(
-		 *     'woocommerce_cart_shipping_method_full_label',
-		 *     [$this, 'shipping_discount_label'],
-		 *     10,
-		 *     2
-		 * );
-		 */
-		public function shipping_discount_label($label, $method)
-		{
-			$meta = $method->get_meta_data();
 
-			// Se não houver metadados, retorna o rótulo original
-			if (!$meta) {
-				return $label;
-			}
+        /**
+         * Customiza o rótulo exibido para métodos de envio no carrinho e checkout.
+         *
+         * Este método é usado como callback do filtro `woocommerce_cart_shipping_method_full_label`.
+         * Ele verifica os metadados do método de envio, e se encontrar a chave `shipping_free`
+         * marcada como verdadeira, adiciona o texto "Frete Grátis" ao lado do rótulo original.
+         *
+         * @param string          $label  Texto atual do rótulo do método de envio (ex: "PAC – R$ 20,00").
+         * @param WC_Shipping_Rate $method Objeto da classe WooCommerce contendo os dados do método de envio,
+         *                                 incluindo ID, custo e metadados adicionados dinamicamente por plugins
+         *                                 ou pela própria lógica de negócio.
+         *
+         * @return string Rótulo do método de envio, possivelmente modificado para incluir a indicação de frete grátis.
+         *
+         * Exemplo de uso:
+         * add_filter(
+         *     'woocommerce_cart_shipping_method_full_label',
+         *     [$this, 'shipping_discount_label'],
+         *     10,
+         *     2
+         * );
+         */
+        public function shipping_discount_label($label, $method)
+        {
+            $meta = $method->get_meta_data();
 
-			// Verifica se o frete grátis está marcado nos metadados
-			if (isset($meta['shipping_free']) && $meta['shipping_free']) {
-				$label .= '&nbsp;<span class="text-danger">Frete Grátis</span>';
-			}
+            // Se não houver metadados, retorna o rótulo original
+            if (!$meta) {
+                return $label;
+            }
 
-			return $label;
-		}
+            // Verifica se o frete grátis está marcado nos metadados
+            if (isset($meta['shipping_free']) && $meta['shipping_free']) {
+                $label .= '&nbsp;<span class="text-danger">Frete Grátis</span>';
+            }
+
+            return $label;
+        }
 
 
         public function show_details_shipping_meta_data($item_id, $item, $product)
@@ -1494,14 +1493,14 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             foreach ($order->get_fees() as $fee) {
                 $fee = +$fee->get_total();
             }
-			
-			$free = $order->get_meta('shipping_free', true) ?? 0;
-			$shipping_total_value = $order->get_meta('shipping_total_value', true) ?? 0;
-			$shipping_total = 0;
-			if(!$free && $shipping_total_value > 0){
-				$shipping_total = $order->get_meta('shipping_total_value', true) ?? 0;
-			}
-			
+
+            $free = $order->get_meta('shipping_free', true) ?? 0;
+            $shipping_total_value = $order->get_meta('shipping_total_value', true) ?? 0;
+            $shipping_total = 0;
+            if (!$free && $shipping_total_value > 0) {
+                $shipping_total = $order->get_meta('shipping_total_value', true) ?? 0;
+            }
+
             $order->set_discount_total($total_discount);
             $order->set_total(($order->get_subtotal() - $total_discount) + $shipping_total + $fee);
             $order->save();
@@ -2034,67 +2033,110 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             ));
         }
 
+        /**
+         * Manipula o registro de um novo usuário WooCommerce via AJAX.
+         * Retorna JSON com status e mensagem detalhada.
+         */
         public function user_register()
         {
-            if (!wp_verify_nonce($_POST['woocommerce_nonce'], 'woocommerce-register')) {
-                wp_send_json(array(
-                    'status' => false,
-                    'message' => __('Código de verificação inválido!', 'central-da-cerveja')
-                ));
+            // Verifica nonce de segurança
+            if (empty($_POST['woocommerce_nonce']) || !wp_verify_nonce($_POST['woocommerce_nonce'], 'woocommerce-register')) {
+                wp_send_json_error([
+                    'status'  => false,
+                    'message' => __('Falha na verificação de segurança. Atualize a página e tente novamente.', 'central-da-cerveja')
+                ], 400);
             }
 
-            $user_id = wc_create_new_customer($_POST['email'], explode('@', $_POST['email'])[0], $_POST['password']);
+            // Campos obrigatórios
+            $required_fields = ['email', 'password', 'first_name', 'last_name', 'address', 'city', 'state', 'postcode', 'phone'];
+            foreach ($required_fields as $field) {
+                if (empty($_POST[$field])) {
+                    wp_send_json_error([
+                        'status'  => false,
+                        'message' => sprintf(__('O campo "%s" é obrigatório.', 'central-da-cerveja'), $field)
+                    ], 422);
+                }
+            }
 
-            update_user_meta($user_id, "nickname", preg_replace("/\s+/", "", strtolower($_POST['first_name'])));
-            update_user_meta($user_id, "first_name", $_POST['first_name']);
-            update_user_meta($user_id, "last_name", $_POST['last_name']);
+            $base_username = sanitize_user(explode('@', $email)[0]);
+            $random_suffix = strtolower(substr(str_shuffle('abcdefghijklmnopqrstuvwxyz'), 0, 4));
 
-            update_user_meta($user_id, "billing_first_name", $_POST['first_name']);
-            update_user_meta($user_id, "billing_last_name", $_POST['last_name']);
-            update_user_meta($user_id, "billing_address_1", $_POST['address']);
-            update_user_meta($user_id, "billing_number", $_POST['number']);
-            update_user_meta($user_id, "billing_address_2", $_POST['complement']);
-            update_user_meta($user_id, "billing_neighborhood", $_POST['county']);
-            update_user_meta($user_id, "billing_postcode", $_POST['postcode']);
-            update_user_meta($user_id, "billing_country", 'BR');
-            update_user_meta($user_id, "billing_city", $_POST['city']);
-            update_user_meta($user_id, "billing_state", $_POST['state']);
-            update_user_meta($user_id, "billing_email", $_POST['email']);
-            update_user_meta($user_id, "billing_phone", $_POST['phone']);
-            update_user_meta($user_id, "billing_cellphone", $_POST['mobile']);
-            update_user_meta($user_id, "billing_cpf", $_POST['cpf']);
+            $email    = sanitize_email($_POST['email']);
+            $password = sanitize_text_field($_POST['password']);
+            $username = $base_username . '_' . $random_suffix;
+            $first    = sanitize_text_field($_POST['first_name']);
+            $last     = sanitize_text_field($_POST['last_name']);
 
-            update_user_meta($user_id, "shipping_first_name", $_POST['first_name']);
-            update_user_meta($user_id, "shipping_last_name", $_POST['last_name']);
-            update_user_meta($user_id, "shipping_address_1", $_POST['address']);
-            update_user_meta($user_id, "shipping_number", $_POST['number']);
-            update_user_meta($user_id, "shipping_address_2", $_POST['complement']);
-            update_user_meta($user_id, "shipping_neighborhood", $_POST['county']);
-            update_user_meta($user_id, "shipping_postcode", $_POST['postcode']);
-            update_user_meta($user_id, "shipping_country", 'BR');
-            update_user_meta($user_id, "shipping_state", $_POST['state']);
-            update_user_meta($user_id, "shipping_city", $_POST['city']);
-            update_user_meta($user_id, "shipping_email", $_POST['email']);
-            update_user_meta($user_id, "shipping_phone", $_POST['phone']);
-            update_user_meta($user_id, "shipping_cellphone", $_POST['mobile']);
-            update_user_meta($user_id, "shipping_cpf", $_POST['cpf']);
+            // Verifica se já existe usuário com o e-mail informado
+            if (email_exists($email)) {
+                wp_send_json_error([
+                    'status'  => false,
+                    'message' => __('Este e-mail já está cadastrado. Faça login ou use outro endereço.', 'central-da-cerveja')
+                ], 409);
+            }
 
-            $user = wp_signon(array(
-                'user_login'    => $_POST['email'],
-                'user_password' => $_POST['password'],
+            // Cria o usuário WooCommerce
+            $user_id = wc_create_new_customer($email, $username, $password);
+
+            if (is_wp_error($user_id)) {
+                wp_send_json_error([
+                    'status'  => false,
+                    'message' => __('Não foi possível criar sua conta. Detalhe: ', 'central-da-cerveja') . $user_id->get_error_message()
+                ], 500);
+            }
+
+            // Atualiza metadados (billing e shipping)
+            $meta_fields = [
+                'nickname'              => preg_replace("/\s+/", "", strtolower($first)),
+                'first_name'            => $first,
+                'last_name'             => $last,
+                'billing_first_name'    => $first,
+                'billing_last_name'     => $last,
+                'billing_address_1'     => sanitize_text_field($_POST['address']),
+                'billing_number'        => sanitize_text_field($_POST['number'] ?? ''),
+                'billing_address_2'     => sanitize_text_field($_POST['complement'] ?? ''),
+                'billing_neighborhood'  => sanitize_text_field($_POST['county'] ?? ''),
+                'billing_postcode'      => sanitize_text_field($_POST['postcode']),
+                'billing_country'       => 'BR',
+                'billing_city'          => sanitize_text_field($_POST['city']),
+                'billing_state'         => sanitize_text_field($_POST['state']),
+                'billing_email'         => $email,
+                'billing_phone'         => sanitize_text_field($_POST['phone']),
+                'billing_cellphone'     => sanitize_text_field($_POST['mobile'] ?? ''),
+                'billing_cpf'           => sanitize_text_field($_POST['cpf'] ?? ''),
+            ];
+
+            foreach ($meta_fields as $key => $value) {
+                update_user_meta($user_id, $key, $value);
+
+                // Atualiza também o shipping equivalente, se aplicável
+                if (str_starts_with($key, 'billing_')) {
+                    $shipping_key = str_replace('billing_', 'shipping_', $key);
+                    update_user_meta($user_id, $shipping_key, $value);
+                }
+            }
+
+            // Autentica o usuário recém-criado
+            $user = wp_signon([
+                'user_login'    => $email,
+                'user_password' => $password,
                 'remember'      => true
-            ), false);
+            ], false);
 
-            if (!is_wp_error($user)) {
-                wp_send_json(array(
-                    'status' => true,
-                ));
+            if (is_wp_error($user)) {
+                wp_send_json_error([
+                    'status'  => false,
+                    'message' => __('Conta criada, mas não foi possível autenticar. Faça login manualmente.', 'central-da-cerveja')
+                ], 200);
             }
 
-            wp_send_json(array(
-                'status' => false,
-            ));
+            wp_send_json_success([
+                'status'  => true,
+                'message' => __('Conta criada e login realizado com sucesso!', 'central-da-cerveja'),
+                'user_id' => $user_id,
+            ]);
         }
+
 
 
         /************************
@@ -3796,30 +3838,30 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 }
             }
         }
-    	
-    	public function custom_translate_woocommerce_strings( $translated_text, $text, $domain )
-    	{
-    	    if ( $domain === 'woocommerce' ) {
-    	        if ( $text === 'There was an error processing your order. Please check for any charges in your payment method and review your <a href="%s">order history</a> before placing the order again.' ) {
-    	            $translated_text = 'Houve um erro ao processar seu pedido. Verifique se há cobranças no seu método de pagamento e revise seu <a href="%s">histórico de pedidos</a> antes de tentar novamente.';
-    	        }
-    	    }
-    	    return $translated_text;
-    	}
+
+        public function custom_translate_woocommerce_strings($translated_text, $text, $domain)
+        {
+            if ($domain === 'woocommerce') {
+                if ($text === 'There was an error processing your order. Please check for any charges in your payment method and review your <a href="%s">order history</a> before placing the order again.') {
+                    $translated_text = 'Houve um erro ao processar seu pedido. Verifique se há cobranças no seu método de pagamento e revise seu <a href="%s">histórico de pedidos</a> antes de tentar novamente.';
+                }
+            }
+            return $translated_text;
+        }
 
         public function save_subscription_address($user_id, $address_type)
         {
-            $users_subscriptions = wcs_get_users_subscriptions( $user_id );
+            $users_subscriptions = wcs_get_users_subscriptions($user_id);
 
-			foreach ( $users_subscriptions as $subscription ) {
-				if ( $subscription->has_status( array( 'active', 'on-hold' ) ) ) {
-                    $subscription->update_meta_data('_'.$address_type.'_address_index', $_POST[$address_type.'_address_index']);
-                    $subscription->update_meta_data('_'.$address_type.'_cpf', $_POST[$address_type.'_cpf']);
-					$subscription->update_meta_data('_'.$address_type.'_number', $_POST[$address_type.'_number']);
-                    $subscription->update_meta_data('_'.$address_type.'_neighborhood', $_POST[$address_type.'_neighborhood']);
+            foreach ($users_subscriptions as $subscription) {
+                if ($subscription->has_status(array('active', 'on-hold'))) {
+                    $subscription->update_meta_data('_' . $address_type . '_address_index', $_POST[$address_type . '_address_index']);
+                    $subscription->update_meta_data('_' . $address_type . '_cpf', $_POST[$address_type . '_cpf']);
+                    $subscription->update_meta_data('_' . $address_type . '_number', $_POST[$address_type . '_number']);
+                    $subscription->update_meta_data('_' . $address_type . '_neighborhood', $_POST[$address_type . '_neighborhood']);
                     $subscription->save();
-				}
-			}
+                }
+            }
         }
     }
 }

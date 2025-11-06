@@ -41,7 +41,7 @@ var ContactEmailIsValid = true;
     };
   }
 
-  
+
 
   $(document).ready(function () {
     $.validator.addMethod(
@@ -143,10 +143,10 @@ var ContactEmailIsValid = true;
       });
 
     var SPMaskBehavior = function (val) {
-        return val.replace(/\D/g, "").length === 11
-          ? "(00) 00000-0000"
-          : "(00) 0000-00009";
-      },
+      return val.replace(/\D/g, "").length === 11
+        ? "(00) 00000-0000"
+        : "(00) 0000-00009";
+    },
       spOptions = {
         onKeyPress: function (val, e, field, options) {
           field.mask(SPMaskBehavior.apply({}, arguments), options);
@@ -227,51 +227,110 @@ var ContactEmailIsValid = true;
         }
       });
 
-    $("#btn_register").on("click", function () {
-      if (
-        $(document).find("#woocommerce_register").valid() &&
-        !$("#cpf").hasClass("cpf_registered")
-      ) {
-        $.ajax({
-          url: cdc_user.ajax_url,
-          type: "POST",
-          dataType: "JSON",
-          data: {
-            action: "user_register",
-            first_name: $("#first_name").val(),
-            last_name: $("#last_name").val(),
-            email: $("#email").val(),
-            password: $("#register_password").val(),
-            cpf: $("#cpf").val(),
-            phone: $("#phone").val(),
-            mobile: $("#mobile").val(),
-            postcode: $("#postcode").val(),
-            address: $("#address").val(),
-            number: $("#number").val(),
-            complement: $("#complement").val(),
-            county: $("#county").val(),
-            city: $("#city").val(),
-            state: $("#state").val(),
-            woocommerce_nonce: $("#woocommerce-register-nonce").val(),
-          },
-          beforeSend: function () {
-            $("#woocommerce_register").block({
-              message: null,
-              overlayCSS: {
-                background: "#fff",
-                opacity: 0.6,
-              },
-            });
-          },
-          success: function (response) {
-            if (response.status) {
+    $("#btn_register").on("click", function (e) {
+      e.preventDefault();
+
+      const $form = $("#woocommerce_register");
+      const $btn = $(this);
+      const $msgBox = $("#register_message");
+
+      if ($btn.prop("disabled")) return;
+
+      $msgBox.stop(true).hide().removeClass("error success").text("");
+
+      if (!$form.valid()) {
+        showMessage("Preencha todos os campos obrigatórios corretamente.", "error");
+        return;
+      }
+
+      if ($("#cpf").hasClass("cpf_registered")) {
+        showMessage("O CPF informado já está cadastrado no sistema.", "error");
+        return;
+      }
+
+      const formData = {
+        action: "user_register",
+        first_name: $("#first_name").val(),
+        last_name: $("#last_name").val(),
+        email: $("#email").val(),
+        password: $("#register_password").val(),
+        cpf: $("#cpf").val(),
+        phone: $("#phone").val(),
+        mobile: $("#mobile").val(),
+        postcode: $("#postcode").val(),
+        address: $("#address").val(),
+        number: $("#number").val(),
+        complement: $("#complement").val(),
+        county: $("#county").val(),
+        city: $("#city").val(),
+        state: $("#state").val(),
+        woocommerce_nonce: $("#woocommerce-register-nonce").val(),
+      };
+
+      $.ajax({
+        url: cdc_user.ajax_url,
+        type: "POST",
+        dataType: "json",
+        data: formData,
+        beforeSend: function () {
+          $btn.prop("disabled", true).text("Cadastrando...");
+          $form.block({
+            message: null,
+            overlayCSS: { background: "#fff", opacity: 0.6 },
+          });
+        },
+        success: function (response) {
+          $form.unblock();
+          $btn.prop("disabled", false).text("Cadastrar");
+
+          if (response.success && response.data?.status) {
+            showMessage(response.data.message || "Cadastro realizado com sucesso, redirecionado...", "success");
+            setTimeout(() => {
               window.location.href = "/";
-            }
-            $("#woocommerce_register").unblock();
-          },
-        });
+            }, 1200);
+          } else {
+            const msg =
+              response.data?.message ||
+              "Não foi possível concluir o cadastro. Verifique os dados e tente novamente.";
+            showMessage(msg, "error");
+          }
+        },
+        error: function (xhr, status, error) {
+          $form.unblock();
+          $btn.prop("disabled", false).text("Cadastrar");
+
+          let msg = "Erro inesperado. Verifique sua conexão e tente novamente.";
+          if (xhr.responseJSON?.data?.message) {
+            msg = xhr.responseJSON.data.message;
+          } else if (error) {
+            msg = `Erro: ${error}`;
+          }
+
+          showMessage(msg, "error");
+        },
+      });
+
+      /**
+       * Exibe uma mensagem no topo do formulário.
+       * @param {string} text - Mensagem a ser exibida
+       * @param {string} type - 'success' ou 'error'
+       */
+      function showMessage(text, type) {
+        const color = type === "success" ? "#2f855a" : "#c53030";
+        $msgBox
+          .text(text)
+          .css({
+            color: "#fff",
+            background: color,
+            padding: "10px 14px",
+            borderRadius: "6px",
+            marginBottom: "10px",
+            display: "none",
+          })
+          .fadeIn(200);
       }
     });
+
 
     $("#postcode").blur(function () {
       var cep = $(this).val().replace(/\D/g, "");

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Login Form
  *
@@ -15,7 +16,7 @@
  * @version 9.2.0
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (! defined('ABSPATH')) {
 	exit; // Exit if accessed directly.
 }
 
@@ -26,39 +27,39 @@ do_action('woocommerce_before_customer_login_form');
 	<div id="form_auth_register_check">
 		<div class="row">
 			<div class="col-12 col-lg-6">
-		<h2><?php esc_html_e( 'Login', 'woocommerce' ); ?></h2>
+				<h2><?php esc_html_e('Login', 'woocommerce'); ?></h2>
 
-		<form class="woocommerce-form woocommerce-form-login login" method="post">
+				<form class="woocommerce-form woocommerce-form-login login" method="post">
 
-			<?php do_action( 'woocommerce_login_form_start' ); ?>
+					<?php do_action('woocommerce_login_form_start'); ?>
 
-			<p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
-				<label for="username"><?php esc_html_e('E-mail', 'central-da-cerveja'); ?>&nbsp;<span class="required">*</span></label>
-				<input type="text" class="woocommerce-Input woocommerce-Input--text input-text" name="username" id="username" autocomplete="username" value="<?php echo (!empty($_POST['username'])) ? esc_attr(wp_unslash($_POST['username'])) : ''; ?>" /><?php // @codingStandardsIgnoreLine 
-																																																																																																																												?>
-			</p>
-			<p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
-				<label for="password"><?php esc_html_e('Senha', 'central-da-cerveja'); ?>&nbsp;<span class="required">*</span></label>
-				<input class="woocommerce-Input woocommerce-Input--text input-text" type="password" name="password" id="password" autocomplete="current-password" />
-			</p>
+					<p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+						<label for="username"><?php esc_html_e('E-mail', 'central-da-cerveja'); ?>&nbsp;<span class="required">*</span></label>
+						<input type="text" class="woocommerce-Input woocommerce-Input--text input-text" name="username" id="username" autocomplete="username" value="<?php echo (!empty($_POST['username'])) ? esc_attr(wp_unslash($_POST['username'])) : ''; ?>" /><?php // @codingStandardsIgnoreLine 
+																																																																	?>
+					</p>
+					<p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+						<label for="password"><?php esc_html_e('Senha', 'central-da-cerveja'); ?>&nbsp;<span class="required">*</span></label>
+						<input class="woocommerce-Input woocommerce-Input--text input-text" type="password" name="password" id="password" autocomplete="current-password" />
+					</p>
 
-			<?php do_action( 'woocommerce_login_form' ); ?>
+					<?php do_action('woocommerce_login_form'); ?>
 
-			<p class="form-row">
-				<label class="woocommerce-form__label woocommerce-form__label-for-checkbox woocommerce-form-login__rememberme">
-					<input class="woocommerce-form__input woocommerce-form__input-checkbox" name="rememberme" type="checkbox" id="rememberme" value="forever" /> <span><?php esc_html_e( 'Remember me', 'woocommerce' ); ?></span>
-				</label>
-				<?php wp_nonce_field( 'woocommerce-login', 'woocommerce-login-nonce' ); ?>
-				<button type="submit" class="woocommerce-button button woocommerce-form-login__submit<?php echo esc_attr( wc_wp_theme_get_element_class_name( 'button' ) ? ' ' . wc_wp_theme_get_element_class_name( 'button' ) : '' ); ?>" name="login" value="<?php esc_attr_e('Log in', 'woocommerce'); ?>"><?php esc_html_e('Log in', 'woocommerce'); ?></button>
-			</p>
-			<p class="woocommerce-LostPassword lost_password">
-				<a href="<?php echo esc_url( wp_lostpassword_url() ); ?>"><?php esc_html_e( 'Lost your password?', 'woocommerce' ); ?></a>
-			</p>
+					<p class="form-row">
+						<label class="woocommerce-form__label woocommerce-form__label-for-checkbox woocommerce-form-login__rememberme">
+							<input class="woocommerce-form__input woocommerce-form__input-checkbox" name="rememberme" type="checkbox" id="rememberme" value="forever" /> <span><?php esc_html_e('Remember me', 'woocommerce'); ?></span>
+						</label>
+						<?php wp_nonce_field('woocommerce-login', 'woocommerce-login-nonce'); ?>
+						<button type="submit" class="woocommerce-button button woocommerce-form-login__submit<?php echo esc_attr(wc_wp_theme_get_element_class_name('button') ? ' ' . wc_wp_theme_get_element_class_name('button') : ''); ?>" name="login" value="<?php esc_attr_e('Log in', 'woocommerce'); ?>"><?php esc_html_e('Log in', 'woocommerce'); ?></button>
+					</p>
+					<p class="woocommerce-LostPassword lost_password">
+						<a href="<?php echo esc_url(wp_lostpassword_url()); ?>"><?php esc_html_e('Lost your password?', 'woocommerce'); ?></a>
+					</p>
 
-			<?php do_action( 'woocommerce_login_form_end' ); ?>
+					<?php do_action('woocommerce_login_form_end'); ?>
 
-		</form>
-	</div>
+				</form>
+			</div>
 			<div class="col-12 col-lg-6 woocommerce-account woocommerce_regiter_verify">
 				<h2 class="woocommerce-title-register"><?php esc_html_e('Register', 'woocommerce'); ?></h2>
 				<div class="row">
@@ -69,7 +70,7 @@ do_action('woocommerce_before_customer_login_form');
 				</div>
 				<div class="form-row">
 					<div class="col-12">
-			<?php do_action( 'woocommerce_register_form' ); ?>
+						<?php do_action('woocommerce_register_form'); ?>
 					</div>
 				</div>
 				<div class="form-row">
@@ -84,12 +85,19 @@ do_action('woocommerce_before_customer_login_form');
 		<div class="row">
 			<div class="col-12 container-fluid p-0">
 				<form id="woocommerce_register" method="post">
-				<?php wp_nonce_field( 'woocommerce-register', 'woocommerce-register-nonce' ); ?>
+					<?php wp_nonce_field('woocommerce-register', 'woocommerce-register-nonce'); ?>
 					<div class="row">
 						<div class="col-12 mb-4">
 							<h3 class="cdc-title"><?php echo __('Detalhes da Conta', 'central-da-cerveja'); ?></h3>
 						</div>
 					</div>
+					
+					<div class="row mb-3">
+						<div class="col-12">
+							<div id="register_message"></div>
+						</div>
+					</div>
+
 					<div class="row mb-3">
 						<div class="col-12 col-md-6">
 							<label class="form-label" for="first_name"><?php echo __('Nome', 'central-da-cerveja'); ?>&nbsp;<span class="text-danger">*</span></label>
@@ -156,7 +164,7 @@ do_action('woocommerce_before_customer_login_form');
 					<div class="row mb-3">
 						<div class="col-12 col-md-4">
 							<label class="form-label" for="county"><?php echo __('Bairro', 'central-da-cerveja'); ?><span class="text-danger">*</span></label>
-							<input type="text" class="form-control form-control--woocommerce" required name="county" id="county" >
+							<input type="text" class="form-control form-control--woocommerce" required name="county" id="county">
 						</div>
 						<div class="col-12 col-md-4">
 							<label class="form-label" for="city"><?php echo __('Cidade', 'central-da-cerveja'); ?>&nbsp;<span class="text-danger">*</span></label>
