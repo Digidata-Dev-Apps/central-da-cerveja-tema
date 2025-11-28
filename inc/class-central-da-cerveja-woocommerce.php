@@ -849,77 +849,126 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 
         private function filter_products_or_entity($filter)
         {
-
             global $wpdb;
-            $sql = "SELECT group_concat(sub_post.ID) AS supplier_id 
-                    FROM {$wpdb->prefix}posts AS sub_post 
-                    WHERE sub_post.post_title LIKE '%$filter%' AND sub_post.post_type='dwcc_supplier' LIMIT 10";
 
-            $response_suppliers_ids = $wpdb->get_results($sql, ARRAY_A);
-            $supplier_ids = array_shift($response_suppliers_ids)['supplier_id'];
+            $filter = sanitize_text_field($filter);
 
-            $sql = "SELECT group_concat(post_id) AS post_id FROM {$wpdb->prefix}postmeta
-            WHERE {$wpdb->prefix}postmeta.meta_key = '_supplier_id'
-            AND {$wpdb->prefix}postmeta.meta_value IN (
-                {$supplier_ids}
-            ) LIMIT 10";
+            $suppliers = $wpdb->get_col($wpdb->prepare("
+                SELECT ID
+                FROM {$wpdb->posts}
+                WHERE post_title LIKE %s
+                AND post_type = 'dwcc_supplier'
+                LIMIT 20
+            ", '%' . $wpdb->esc_like($filter) . '%'));
 
-            $response_supplier_ids_products = $wpdb->get_results($sql, ARRAY_A);
-            $post_ids = empty($response_supplier_ids_products) ? "''" : array_shift($response_supplier_ids_products)['post_id'];
-            $post_ids = empty($post_ids) ? "''" : $post_ids;
+            if (empty($suppliers)) {
+                $suppliers = [0];
+            }
 
-            $sql = "SELECT DISTINCT 
-                        post.ID, 
-                        post.post_title, 
-                        post.post_name,
-                        postmeta_sale.meta_value AS sale_price,
-                        postmeta_regular.meta_value AS regular_price,
-                        postmeta_thumbnail_image.meta_value AS image,
-                        postmeta_kit.meta_value AS kit_full_price,
-                        postmeta_approved_date.meta_value AS approved_date,
-                        (
-                            SELECT sub_post.post_title FROM {$wpdb->prefix}posts AS sub_post
-                            WHERE sub_post.ID = (
-                                                SELECT {$wpdb->prefix}postmeta.meta_value FROM {$wpdb->prefix}postmeta
-                                                WHERE {$wpdb->prefix}postmeta.meta_key = '_supplier_id' AND {$wpdb->prefix}postmeta.post_id= post.ID
-                                            )
-                        ) AS supplier_name,
-                        (
-                            SELECT postmeta_ipi.meta_value FROM {$wpdb->prefix}postmeta AS postmeta_ipi WHERE postmeta_ipi.post_id = (
-                                                SELECT {$wpdb->prefix}postmeta.meta_value FROM {$wpdb->prefix}postmeta
-                                                WHERE {$wpdb->prefix}postmeta.meta_key = '_supplier_id' AND {$wpdb->prefix}postmeta.post_id= post.ID
-                                            ) AND postmeta_ipi.meta_key = '_ipi_tax' LIMIT 1
-                        ) AS ipi
-                    FROM {$wpdb->prefix}posts AS post
-                    INNER JOIN {$wpdb->prefix}term_relationships AS term_relationships ON (post.ID = term_relationships.object_id)
-                    INNER JOIN {$wpdb->prefix}term_taxonomy AS attribute_lookup ON (attribute_lookup.term_taxonomy_id = term_relationships.term_taxonomy_id)
-                    INNER JOIN {$wpdb->prefix}terms AS terms ON (attribute_lookup.term_id = terms.term_id)
-                    LEFT JOIN {$wpdb->prefix}postmeta AS postmeta_stock ON (post.ID = postmeta_stock.post_id AND postmeta_stock.meta_key = '_stock_status')
-                    LEFT JOIN {$wpdb->prefix}postmeta AS postmeta_sale ON (post.ID = postmeta_sale.post_id AND postmeta_sale.meta_key = '_sale_price')
-                    LEFT JOIN {$wpdb->prefix}postmeta AS postmeta_regular ON (post.ID = postmeta_regular.post_id AND postmeta_regular.meta_key = '_regular_price')
-                    LEFT JOIN {$wpdb->prefix}postmeta AS postmeta_thumbnail ON (post.ID = postmeta_thumbnail.post_id AND postmeta_thumbnail.meta_key = '_thumbnail_id')
-                    LEFT JOIN {$wpdb->prefix}postmeta AS postmeta_thumbnail_image ON (postmeta_thumbnail.meta_value = postmeta_thumbnail_image.post_id AND postmeta_thumbnail_image.meta_key = '_wp_attached_file')
-                    LEFT JOIN {$wpdb->prefix}postmeta AS postmeta_kit ON (postmeta_kit.post_id = post.ID AND postmeta_kit.meta_key = '_kit_full_price')
-                    LEFT JOIN {$wpdb->prefix}postmeta AS postmeta_commercialize_on_kit ON (postmeta_commercialize_on_kit.post_id = post.ID AND postmeta_commercialize_on_kit.meta_key = '_commercialize_on_kit')
-                    LEFT JOIN {$wpdb->prefix}postmeta AS pm_certificate_expired ON (pm_certificate_expired.post_id = post.ID AND pm_certificate_expired.meta_key = '_supplier_certificate_expired')
-                    LEFT JOIN {$wpdb->prefix}postmeta AS postmeta_approved_date ON (post.ID = postmeta_approved_date.post_id AND postmeta_approved_date.meta_key = '_approved_date_product')
-                    WHERE ( post.post_title LIKE '%{$filter}%' OR terms.name LIKE '%{$filter}%' OR post.ID IN ( {$post_ids} ) OR post.post_excerpt LIKE '%{$filter}%' OR post.post_content LIKE '%{$filter}%')
-                    AND (attribute_lookup.taxonomy = 'pa_por-estilo' 
-                        OR attribute_lookup.taxonomy = 'pa_por-pais' 
-                        OR attribute_lookup.taxonomy = 'pa_por-estado' 
-                        OR attribute_lookup.taxonomy = 'pa_por-perfil' 
-                        OR attribute_lookup.taxonomy = 'pa_kit'
-                        OR attribute_lookup.taxonomy = 'product_cat') 
-                    AND post.post_type = 'product' 
-                    AND post.post_status = 'publish' 
-                    AND postmeta_stock.meta_value = 'instock' 
-                    AND (postmeta_commercialize_on_kit.meta_value != 1 OR postmeta_commercialize_on_kit.meta_value IS NULL) 
-                    AND (pm_certificate_expired.meta_value != 1 OR pm_certificate_expired.meta_value IS NULL)
-                    LIMIT 10";
-            $response = $wpdb->get_results($sql, ARRAY_A);
+            $like = '%' . $wpdb->esc_like($filter) . '%';
+
+            $sql = $wpdb->prepare("
+                SELECT 
+                    p.id,
+                    p.name,
+                    p.slug,
+                    p.supplier_id,
+                    p.approved_date_product,
+                    p.image
+                FROM vludavcbertkv_cdc_products AS p
+                WHERE (
+                        p.name LIKE %s OR
+                        p.slug LIKE %s OR
+                        p.excerpt LIKE %s OR
+                        p.description LIKE %s OR
+                        p.supplier_id IN (" . implode(',', array_map('intval', $suppliers)) . ")
+                )
+                AND p.status = 'publish'
+                AND (p.commercialize_on_kit IS NULL OR p.commercialize_on_kit != 1)
+                ORDER BY p.name ASC
+                LIMIT 10
+            ", $like, $like, $like, $like);
+
+            $products = $wpdb->get_results($sql, ARRAY_A);
+            if (empty($products)) return [];
+
+
+            $ids = array_column($products, 'id');
+            $ids_str = implode(',', array_map('intval', $ids));
+
+            $wp_meta = $wpdb->get_results("
+                SELECT 
+                    post.ID,
+                    pm_sale.meta_value AS sale_price,
+                    pm_regular.meta_value AS regular_price,
+                    pm_thumbnail.meta_value AS thumbnail_id,
+                    pm_image.meta_value AS image,
+                    pm_kit.meta_value AS kit_full_price,
+                    pm_approved.meta_value AS approved_date,
+                    pm_supplier.meta_value AS supplier_id_real,
+                    pm_ipi.meta_value AS ipi
+                FROM {$wpdb->posts} AS post
+                LEFT JOIN {$wpdb->postmeta} AS pm_sale 
+                    ON pm_sale.post_id = post.ID AND pm_sale.meta_key = '_sale_price'
+                LEFT JOIN {$wpdb->postmeta} AS pm_regular 
+                    ON pm_regular.post_id = post.ID AND pm_regular.meta_key = '_regular_price'
+                LEFT JOIN {$wpdb->postmeta} AS pm_thumbnail 
+                    ON pm_thumbnail.post_id = post.ID AND pm_thumbnail.meta_key = '_thumbnail_id'
+                LEFT JOIN {$wpdb->postmeta} AS pm_image 
+                    ON pm_image.post_id = pm_thumbnail.meta_value AND pm_image.meta_key = '_wp_attached_file'
+                LEFT JOIN {$wpdb->postmeta} AS pm_kit
+                    ON pm_kit.post_id = post.ID AND pm_kit.meta_key = '_kit_full_price'
+                LEFT JOIN {$wpdb->postmeta} AS pm_approved
+                    ON pm_approved.post_id = post.ID AND pm_approved.meta_key = '_approved_date_product'
+                LEFT JOIN {$wpdb->postmeta} AS pm_supplier
+                    ON pm_supplier.post_id = post.ID AND pm_supplier.meta_key = '_supplier_id'
+                LEFT JOIN {$wpdb->postmeta} AS pm_ipi
+                    ON pm_ipi.post_id = pm_supplier.meta_value AND pm_ipi.meta_key = '_ipi_tax'
+                WHERE post.ID IN ($ids_str)
+                AND post.post_type = 'product'
+                LIMIT 100
+            ", ARRAY_A);
+
+
+            $suppliers_data = [];
+            if (!empty($suppliers)) {
+                $supplier_rows = $wpdb->get_results("
+                    SELECT ID, post_title
+                    FROM {$wpdb->posts}
+                    WHERE ID IN (" . implode(',', array_map('intval', $suppliers)) . ")
+                ", ARRAY_A);
+
+                foreach ($supplier_rows as $s) {
+                    $suppliers_data[$s['ID']] = $s['post_title'];
+                }
+            }
+
+            $response = [];
+
+            foreach ($products as $p) {
+                $id = $p['id'];
+                $meta = $wp_meta[$id] ?? null;
+
+                $supplier_id = $meta['supplier_id_real'] ?? $p['supplier_id'];
+                $supplier_name = $suppliers_data[$supplier_id] ?? null;
+
+                $response[] = [
+                    "ID"            => (string)$id,
+                    "post_title"    => $p['name'],
+                    "post_name"     => $p['slug'],
+                    "sale_price"    => $meta['sale_price'] ?? 0,
+                    "regular_price" => $meta['regular_price'] ?? 0,
+                    "image"         => $meta['image'] ?? $p['image'],
+                    "kit_full_price" => $meta['kit_full_price'] ?? 0,
+                    "approved_date" => $meta['approved_date'] ?? $p['approved_date_product'],
+                    "supplier_name" => $supplier_name,
+                    "ipi"           => $meta['ipi'] ?? "0",
+                ];
+            }
 
             return $response;
         }
+
 
         private function is_valid_product_discount_subscription($product)
         {
