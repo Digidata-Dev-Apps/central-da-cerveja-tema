@@ -37,6 +37,7 @@ do_action( 'woocommerce_before_shipping_calculator' ); ?>
 					?>
 	<input type="hidden" name="calc_shipping_state" id="calc_shipping_state" value="<?php echo ($current_r) ? $current_r : null; ?>">
 	<input type="hidden" name="calc_shipping_city" id="calc_shipping_city" value="<?php echo esc_attr(WC()->customer->get_shipping_city()); ?>" />
+	<p class="text-danger font-weight-bold" style="font-size: 14px;">Os prazos de entrega são estimados</p>
 	<p><?php echo __('Informe seu CEP de entrega para calcular o frete.', 'central-da-cerveja'); ?></p>
 			<p class="form-row form-row-wide" id="calc_shipping_postcode_field" style="display:flex;">
 				<input type="text" class="input-text" value="<?php echo esc_attr( WC()->customer->get_shipping_postcode() ); ?>" placeholder="<?php esc_attr_e( 'Postcode / ZIP', 'woocommerce' ); ?>" name="calc_shipping_postcode" id="calc_shipping_postcode" />
