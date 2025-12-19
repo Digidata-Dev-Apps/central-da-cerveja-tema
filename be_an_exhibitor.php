@@ -91,7 +91,7 @@ get_header();
                 <p><strong>Pois bem, a Central da Cerveja é o único marketplace exclusivo de cervejas que opera com “drop
                     &amp;
                     shipping” no mercado nacional. Explicando: você envia seus produtos até o nosso centro logístico que
-                    está situado em Carapicuíba, bem pertinho de São Paulo. Lá eles ficam armazenados em condições
+                    está situado em Santana de Parnaíba, bem pertinho de São Paulo. Lá eles ficam armazenados em condições
                     ideais
                     até que sejam comercializados diretamente ao consumidor final.</strong></p>
 
