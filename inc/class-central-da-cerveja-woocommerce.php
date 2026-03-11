@@ -218,7 +218,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 
             add_action('woocommerce_customer_save_address', array($this, 'save_subscription_address'), 10, 2);
 
-            add_action('woocommerce_view_order', array($this, 'get_order_tracking'), 10, 1);
+            add_action('woocommerce_view_order', array($this, 'get_order_tracking'), 1, 1);
         }
 
         private function get_wc_shipping_methods()
@@ -3918,7 +3918,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
         public function get_order_tracking($order_id)
         {
             $order = new WC_Order($order_id);
-
+            
             $url = get_option('wc_settings_woocommercenfe_ambiente') == 1 ? 'https://api.centraldacerveja.com.br/v1/public/shipping/track' : 'https://test.api.centraldacerveja.com.br/v1/public/shipping/track';
             $data = $this->data_for_tracking($order);
             
@@ -3958,6 +3958,8 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 
             foreach ($nfes as $nfe) {
                 if ($nfe['type'] == 2) {
+                    $document = get_post_meta($nfe['supplier_id'], '_supplier_cnpj', true);
+                    $document = preg_replace('([^0-9])', '', $document);
                     $nfe_number = $nfe['n_nfe'];
                     $nfe_key = $nfe['chave_acesso'];
                     break;
@@ -3965,7 +3967,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             }
 
             return array(
-                'document' => '41679000000147',
+                'document' => $document,
                 'nf_number' => $nfe_number,
                 'nf_key' => $nfe_key
             );
