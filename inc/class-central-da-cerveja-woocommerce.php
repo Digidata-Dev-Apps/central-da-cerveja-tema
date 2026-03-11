@@ -217,6 +217,8 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             add_filter('gettext', array($this, 'custom_translate_woocommerce_strings'), 999, 3);
 
             add_action('woocommerce_customer_save_address', array($this, 'save_subscription_address'), 10, 2);
+
+            add_action('woocommerce_view_order', array($this, 'get_order_tracking'), 10, 1);
         }
 
         private function get_wc_shipping_methods()
@@ -3911,6 +3913,64 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                     $subscription->save();
                 }
             }
+        }
+
+        public function get_order_tracking($order_id)
+        {
+            $order = new WC_Order($order_id);
+            echo "<pre>";
+            print_r('teste');
+            exit;
+            $url = get_option('wc_settings_woocommercenfe_ambiente') == 1 ? 'https://api.centraldacerveja.com.br/v1/public/shipping/track' : 'http://localhost:8000/v1/public/shipping/track';
+            $data = $this->data_for_tracking($order);
+            
+            $response = wp_remote_post(
+                $url,
+                [
+                    'timeout' => 60,
+                    'headers' => ['Content-type' => 'application/json'],
+                    'body' => json_encode($data),
+                ]
+            );
+
+            $body = wp_remote_retrieve_body($response);
+            $data = json_decode($body);
+
+            $html = "<h2>Rastreamento</h2>";
+
+            if (empty($data->events)) {
+                $html .= "<p>Seu pedido ainda não foi coletado pela transportadora.</p>";
+                echo $html;
+                return;
+            }
+
+            $html .= "<p>Previsão de entrega: {$data->delivery_date}</p>";
+
+            foreach ($data->events as $event) {
+                $html .= "<p>{$event->Date}: {$event->Description}</p>";
+            }
+
+            echo $html;
+            return;
+        }
+
+        private function data_for_tracking($order)
+        {
+            $nfes = apply_filters('get_nfes', $order->get_id());
+
+            foreach ($nfes as $nfe) {
+                if ($nfe['type'] == 2) {
+                    $nfe_number = $nfe['n_nfe'];
+                    $nfe_key = $nfe['chave_acesso'];
+                    break;
+                }
+            }
+
+            return array(
+                'document' => '41679000000147',
+                'nf_number' => $nfe_number,
+                'nf_key' => $nfe_key
+            );
         }
     }
 }
