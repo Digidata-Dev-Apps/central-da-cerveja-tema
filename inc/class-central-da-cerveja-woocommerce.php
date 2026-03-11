@@ -3921,7 +3921,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             echo "<pre>";
             print_r('teste');
             exit;
-            $url = get_option('wc_settings_woocommercenfe_ambiente') == 1 ? 'https://api.centraldacerveja.com.br/v1/public/shipping/track' : 'http://localhost:8000/v1/public/shipping/track';
+            $url = get_option('wc_settings_woocommercenfe_ambiente') == 1 ? 'https://api.centraldacerveja.com.br/v1/public/shipping/track' : 'https://test.api.centraldacerveja.com.br/v1/public/shipping/track';
             $data = $this->data_for_tracking($order);
             
             $response = wp_remote_post(
