@@ -3918,9 +3918,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
         public function get_order_tracking($order_id)
         {
             $order = new WC_Order($order_id);
-            echo "<pre>";
-            print_r('teste');
-            exit;
+
             $url = get_option('wc_settings_woocommercenfe_ambiente') == 1 ? 'https://api.centraldacerveja.com.br/v1/public/shipping/track' : 'https://test.api.centraldacerveja.com.br/v1/public/shipping/track';
             $data = $this->data_for_tracking($order);
             
