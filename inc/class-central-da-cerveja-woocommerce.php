@@ -4000,9 +4000,21 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 
             if (isset($data['ship_to_different_address'])) {
                 WC()->customer->update_meta_data('different_address',sanitize_text_field($data['ship_to_different_address']));
+                $new_zipcode = $data['shipping_postcode'];
             } else {
                 WC()->customer->update_meta_data('different_address', 0);
+                $new_zipcode = $data['billing_postcode'];
             }
+
+            $old_zipcode = WC()->session->get('delivery_zipcode');
+
+            if ($old_zipcode != $new_zipcode) {
+                WC()->session->set('zipcode_changed', 1);
+            } else {
+                WC()->session->set('zipcode_changed', 0);
+            }
+
+            WC()->session->set('delivery_zipcode', $new_zipcode);
 
             $this->update_customer_on_checkout($data, 'billing');
             $this->update_customer_on_checkout($data, 'shipping');
