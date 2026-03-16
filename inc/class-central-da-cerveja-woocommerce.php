@@ -219,6 +219,12 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             add_action('woocommerce_customer_save_address', array($this, 'save_subscription_address'), 10, 2);
 
             add_action('woocommerce_view_order', array($this, 'get_order_tracking'), 1, 1);
+
+            add_filter('woocommerce_cart_shipping_packages', array($this, 'add_number_to_package_data'));
+
+            add_action('woocommerce_checkout_update_order_review', array($this, 'update_customer_data'), 1, 1);
+
+            add_action('woocommerce_checkout_create_order', array($this, 'save_rodonaves_protocol_number'), 10, 2);
         }
 
         private function get_wc_shipping_methods()
@@ -3919,7 +3925,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
         {
             $order = new WC_Order($order_id);
             
-            $url = get_option('wc_settings_woocommercenfe_ambiente') == 1 ? 'https://api.centraldacerveja.com.br/v1/public/shipping/track' : 'https://test.api.centraldacerveja.com.br/v1/public/shipping/track';
+            $url = get_option('wc_settings_woocommercenfe_ambiente') == 1 ? 'https://api.centraldacerveja.com.br/v1/public/shipping/rodonaves/track' : 'https://test.api.centraldacerveja.com.br/v1/public/shipping/rodonaves/track';
             $data = $this->data_for_tracking($order);
             
             $response = wp_remote_post(
@@ -3971,6 +3977,97 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 'nf_number' => $nfe_number,
                 'nf_key' => $nfe_key
             );
+        }
+
+        public function add_number_to_package_data($packages)
+        {
+            foreach ($packages as &$package) {
+                $use_shipping = WC()->customer->get_meta('different_address');
+                if ($use_shipping) {
+                    $number = WC()->customer->get_meta('shipping_number');
+                } else {
+                    $number = WC()->customer->get_meta('billing_number');
+                }
+                $package['destination']['number'] = $number;
+            }
+
+            return $packages;
+        }
+
+        public function update_customer_data($post)
+        {
+            parse_str($post, $data);
+
+            if (isset($data['ship_to_different_address'])) {
+                WC()->customer->update_meta_data('different_address',sanitize_text_field($data['ship_to_different_address']));
+            } else {
+                WC()->customer->update_meta_data('different_address', 0);
+            }
+
+            $this->update_customer_on_checkout($data, 'billing');
+            $this->update_customer_on_checkout($data, 'shipping');
+           
+            WC()->customer->save();
+        }
+
+        private function update_customer_on_checkout($data, $type)
+        {
+            $native_fields = [
+                'first_name',
+                'last_name',
+                'phone',
+                'email',
+                'postcode',
+                'address_1',
+                'address_2',
+                'city',
+                'state'
+            ];
+
+            $custom_fields = [
+                'cpf',
+                'neighborhood',
+                'number'
+            ];
+
+            foreach ($native_fields as $field) {
+
+                $key = "{$type}_{$field}";
+
+                if (!isset($data[$key])) {
+                    continue;
+                }
+
+                $value = $field === 'email' ? sanitize_email($data[$key]) : sanitize_text_field($data[$key]);
+
+                $method = "set_{$key}";
+
+                if (method_exists(WC()->customer, $method)) {
+                    WC()->customer->$method($value);
+                }
+            }
+
+            foreach ($custom_fields as $field) {
+
+                $key = "{$type}_{$field}";
+
+                if (!isset($data[$key])) {
+                    continue;
+                }
+
+                WC()->customer->update_meta_data($key, sanitize_text_field($data[$key]));
+            }
+        }
+        
+        public function save_rodonaves_protocol_number($order, $data)
+        {
+            $rodonaves = WC()->session->get('rodonaves_shipping');
+
+            if (!empty($rodonaves) && isset($rodonaves->protocol)) {
+                $order->update_meta_data('_rodonaves_protocol', $rodonaves->protocol);
+            }
+
+            WC()->session->__unset('rodonaves_shipping');
         }
     }
 }
