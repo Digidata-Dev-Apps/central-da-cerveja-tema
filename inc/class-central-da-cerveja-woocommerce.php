@@ -225,6 +225,8 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             add_action('woocommerce_checkout_update_order_review', array($this, 'update_customer_data'), 1, 1);
 
             add_action('woocommerce_checkout_create_order', array($this, 'save_rodonaves_protocol_number'), 10, 2);
+
+            add_action('woocommerce_before_calculate_totals', array($this, 'verify_if_zipcode_changed'), 10, 1);
         }
 
         private function get_wc_shipping_methods()
@@ -4080,6 +4082,24 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             }
 
             WC()->session->__unset('rodonaves_shipping');
+        }
+
+        public function verify_if_zipcode_changed($cart)
+        {
+            if (is_admin() && !defined('DOING_AJAX')) return;
+
+            if (!is_cart()) return;
+
+            $new_zipcode = WC()->customer->get_shipping_postcode();
+            $old_zipcode = WC()->session->get('delivery_zipcode');
+
+            if ($old_zipcode != $new_zipcode) {
+                WC()->session->set('zipcode_changed', 1);
+            } else {
+                WC()->session->set('zipcode_changed', 0);
+            }
+
+            WC()->session->set('delivery_zipcode', $new_zipcode);
         }
     }
 }

@@ -41,7 +41,7 @@ var ContactEmailIsValid = true;
     };
   }
 
-
+  
 
   $(document).ready(function () {
     $.validator.addMethod(
@@ -143,10 +143,10 @@ var ContactEmailIsValid = true;
       });
 
     var SPMaskBehavior = function (val) {
-      return val.replace(/\D/g, "").length === 11
-        ? "(00) 00000-0000"
-        : "(00) 0000-00009";
-    },
+        return val.replace(/\D/g, "").length === 11
+          ? "(00) 00000-0000"
+          : "(00) 0000-00009";
+      },
       spOptions = {
         onKeyPress: function (val, e, field, options) {
           field.mask(SPMaskBehavior.apply({}, arguments), options);
@@ -374,73 +374,63 @@ var ContactEmailIsValid = true;
       show_addres_cart();
     });
 
-    $("#billing_postcode").blur(function () {
+    var lastCepBilling = "";
+    var lastCepShipping = "";
+
+    $("#billing_postcode").on("keyup", function () {
       var cep = $(this).val().replace(/\D/g, "");
-      if (cep != "") {
-        var validacep = /^[0-9]{8}$/;
-        if (validacep.test(cep)) {
-          $.getJSON(
-            "https://viacep.com.br/ws/" + cep + "/json/?callback=?",
-            function (dados) {
-              if (!("erro" in dados)) {
-                $("#billing_address_1").val(dados.logradouro);
-                $("#billing_neighborhood").val(dados.bairro);
-                $("#billing_city").val(dados.localidade);
-                $("#billing_state").val(dados.uf);
-                $("#billing_state").select2().trigger("change");
-                return;
-              }
-              clear_billing_form();
-              $(".woocommerce-notices-wrapper").html(
-                `<div class="woocommerce-info">Cep não encontrado!</div>`,
-              );
-              return;
-            },
-          );
-        } else {
-          clear_billing_form();
-          $(".woocommerce-notices-wrapper").html(
-            `<div class="woocommerce-info">Cep inválido!</div>`,
-          );
-        }
-      } else {
-        clear_billing_form();
-      }
+
+      if (cep.length != 8) return;
+      if (cep == lastCepBilling) return;
+
+      lastCepBilling = cep;
+      searchAddress(cep, "billing");
     });
 
-    $("#shipping_postcode").blur(function () {
+    $("#shipping_postcode").on("keyup", function () {
       var cep = $(this).val().replace(/\D/g, "");
-      if (cep != "") {
-        var validacep = /^[0-9]{8}$/;
-        if (validacep.test(cep)) {
-          $.getJSON(
-            "https://viacep.com.br/ws/" + cep + "/json/?callback=?",
-            function (dados) {
-              if (!("erro" in dados)) {
-                $("#shipping_address_1").val(dados.logradouro);
-                $("#shipping_neighborhood").val(dados.bairro);
-                $("#shipping_city").val(dados.localidade);
-                $("#shipping_state").val(dados.uf);
-                $("#shipping_state").select2().trigger("change");
-                $("#shipping_nuber").val(null);
-              } else {
-                clear_shipping_form();
-                $(".woocommerce-notices-wrapper").html(
-                  `<div class="woocommerce-info">Cep não encontrado!</div>`,
-                );
-              }
-            },
-          );
-        } else {
-          clear_shipping_form();
-          $(".woocommerce-notices-wrapper").html(
-            `<div class="woocommerce-info">Cep inválido!</div>`,
-          );
+
+      if (cep.length != 8) return;
+      if (cep == lastCepShipping) return;
+
+      lastCepShipping = cep;
+      searchAddress(cep, "shipping");
+    });
+
+    function searchAddress(cep, type) {
+      var validacep = /^[0-9]{8}$/;
+
+      if (!validacep.test(cep)) {
+        clearDeliveryForm(type);
+        $(".woocommerce-notices-wrapper").html(
+          `<div class="woocommerce-info">Cep inválido!</div>`
+        );
+        return;
+      }
+
+      $.getJSON("https://viacep.com.br/ws/" + cep + "/json/?callback=?", function (dados) {
+        if (!("erro" in dados)) {
+          $(`#${type}_address_1`).val(dados.logradouro);
+          $(`#${type}_neighborhood`).val(dados.bairro);
+          $(`#${type}_city`).val(dados.localidade);
+          $(`#${type}_state`).val(dados.uf).trigger("change");
+          return;
         }
+
+        clearDeliveryForm(type);
+        $(".woocommerce-notices-wrapper").html(
+          `<div class="woocommerce-info">Cep não encontrado!</div>`
+        );
+      });
+    }
+
+    function clearDeliveryForm(type) {
+      if (type === "billing") {
+        clear_billing_form();
       } else {
         clear_shipping_form();
       }
-    });
+    }
 
     function clear_register_form() {
       $("#address").val(null);
