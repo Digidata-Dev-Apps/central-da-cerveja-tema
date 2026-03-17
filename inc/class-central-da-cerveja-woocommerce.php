@@ -2837,7 +2837,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 
                 if (!empty($product_id)) {
                     $result = $wpdb->get_row("
-                    SELECT valid_date FROM {$wpdb->prefix}cdc_stock_control WHERE order_id = {$post} AND product_id = {$product_id} ORDER BY DATE
+                    SELECT valid_date FROM {$wpdb->prefix}cdc_stock_control WHERE order_id = {$post} AND product_id = {$product_id};
                 ", ARRAY_A);
 
                     return $result['valid_date'];
@@ -2850,7 +2850,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             global $wpdb;
             if (!empty($product_id)) {
                 $result = $wpdb->get_row("
-                    SELECT date FROM {$wpdb->prefix}cdc_ticket_products WHERE product_id = {$product_id} AND status = 'ativo' ORDER BY DATE;
+                    SELECT date FROM {$wpdb->prefix}cdc_ticket_products WHERE product_id = {$product_id} AND status = 'ativo' ORDER BY `date`;
                 ", ARRAY_A);
 
                 return $result['date'] ?? '';
@@ -3223,50 +3223,11 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
         private function oldest_ticket_in_stock($product_id)
         {
             global $wpdb;
-            if (!empty($product_id)) {
-                $query = $wpdb->get_results("
-                SELECT DISTINCT ticket_id, date FROM {$wpdb->prefix}cdc_stock_manager WHERE ticket_id IS NOT NULL AND qty_added IS NOT NULL and product_id = '{$product_id}'
-            ");
+            $result = $wpdb->get_row("
+                SELECT ticket_id FROM {$wpdb->prefix}cdc_ticket_products WHERE product_id = {$product_id} AND status = 'ativo' ORDER BY `date`;
+            ", ARRAY_A);
 
-                $statuses = array('wc-completed', 'wc-processing', 'wc-on-hold', 'wc-in-preparation', 'wc-arrival-shipment', 'wc-refunded', 'wc-failed');
-
-                foreach ($query as $post) {
-                    $order_id = $this->get_orders_ids_by_product_id($product_id, $statuses, $post->date);
-
-                    $product_sold_qty = $this->get_sold_quantity($post->date, $order_id, $product_id);
-                    $product_sold_qty = !empty($product_sold_qty) ? array_sum($product_sold_qty) : '';
-
-                    $ticket_sold_meta = json_decode(get_post_meta($post->ticket_id, 'ticket_products', true));
-
-                    if (!empty($post)) {
-                        $result_qty_removed = $wpdb->get_row("
-                        SELECT sum(qty_removed) as qty FROM {$wpdb->prefix}cdc_stock_manager WHERE product_id = '{$product_id}'
-                        AND (date >= '{$post->date}')
-                        AND reason > 0
-                        AND ticket_id = {$post->ticket_id}
-                    ", ARRAY_A);
-                    }
-
-                    $ticket_quantity = !empty($result_qty_removed['qty']) ? $result_qty_removed['qty'] : 0;
-                    $product_ticket_qty = intval($ticket_quantity) + intval($product_sold_qty);
-
-                    if (!empty($ticket_sold_meta)) {
-                        foreach ($ticket_sold_meta as $sold_meta) {
-
-                            $sum_ticket_quantity = 0;
-                            foreach ($ticket_sold_meta as $key => $value) {
-                                if ($value->product_id == $sold_meta->product_id) {
-                                    $sum_ticket_quantity += ((isset($value->real_quantity) && !empty($value->real_quantity)) && intval($value->real_quantity) > 0) ? intval($value->real_quantity) : intval($value->quantity);
-                                }
-                            }
-                            if ($product_id == $sold_meta->product_id && $product_ticket_qty < $sum_ticket_quantity && strtotime($sold_meta->date) > strtotime(date('Y-m-d'))) {
-
-                                return $post->ticket_id;
-                            }
-                        }
-                    }
-                }
-            }
+            return $result['ticket_id'] ?? '';
         }
 
         public function cdc_subscription_email_notification()
@@ -3606,10 +3567,10 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                             AND `tp`.`status` = 'ativo'
                         )
                         INNER JOIN `{$wpdb->prefix}cdc_products` AS `p` ON (`p`.`id` = `tp`.`product_id`)
-                        INNER JOIN `{$wpdb->prefix}cdc_stock_manager` AS `sm` ON (
-                            `t`.`ticket_id` = `sm`.`ticket_id` 
-                            AND `p`.`id` = `sm`.`product_id`
-                            AND `sm`.`remaining_stock` > 0
+                        INNER JOIN `{$wpdb->prefix}cdc_stock_control` AS `sc` ON (
+                            `t`.`ticket_id` = `sc`.`ticket_id` 
+                            AND `p`.`id` = `sc`.`product_id`
+                            AND `sc`.`remaining_stock` > 0
                         )
                         WHERE `p`.`status` = 'publish'
                         GROUP BY `p`.`id`
@@ -3640,15 +3601,15 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                         `p`.`volume`,
                         `p`.`style`,
                         `p`.`type`,
-                        GREATEST(`sm`.`remaining_stock` - COALESCE(`rt`.`reserved_qty`, 0), 0) AS `remaining_stock`,
+                        GREATEST(`sc`.`remaining_stock` - COALESCE(`rt`.`reserved_qty`, 0), 0) AS `remaining_stock`,
                         `p`.`created_at`, 
                         `p`.`updated_at`
                     FROM `unique_products` AS `up`
                     INNER JOIN `{$wpdb->prefix}cdc_products` AS `p` ON (`p`.`id` = `up`.`product_id`)
-                    INNER JOIN `{$wpdb->prefix}cdc_stock_manager` AS `sm` ON (
-                        `up`.`primary_ticket_id` = `sm`.`ticket_id` 
-                        AND `p`.`id` = `sm`.`product_id`
-                        AND `sm`.`remaining_stock` > 0
+                    INNER JOIN `{$wpdb->prefix}cdc_stock_control` AS `sc` ON (
+                        `up`.`primary_ticket_id` = `sc`.`ticket_id` 
+                        AND `p`.`id` = `sc`.`product_id`
+                        AND `sc`.`remaining_stock` > 0
                     )
 					LEFT JOIN `reserved_totals` AS `rt` ON (`p`.`id` = `rt`.`product_id`)
                     LEFT JOIN `{$wpdb->prefix}posts` AS `s` ON (
