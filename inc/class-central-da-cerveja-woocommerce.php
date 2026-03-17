@@ -3580,6 +3580,13 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                         FROM `{$wpdb->prefix}wc_reserved_stock`
                         WHERE `expires` > NOW()
                         GROUP BY `product_id`
+                    ),
+                    stock_min AS (
+                        SELECT 
+                            `product_id`, `ticket_id`, MIN(`remaining_stock`) AS `remaining_stock`
+                        FROM `{$wpdb->prefix}cdc_stock_control`
+                        WHERE `remaining_stock` > 0
+                        GROUP BY `product_id`, `ticket_id`
                     )
                     SELECT
                         `p`.`id`, 
@@ -3601,15 +3608,14 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                         `p`.`volume`,
                         `p`.`style`,
                         `p`.`type`,
-                        GREATEST(`sc`.`remaining_stock` - COALESCE(`rt`.`reserved_qty`, 0), 0) AS `remaining_stock`,
+                        GREATEST(`sm`.`remaining_stock` - COALESCE(`rt`.`reserved_qty`, 0), 0) AS `remaining_stock`,
                         `p`.`created_at`, 
                         `p`.`updated_at`
                     FROM `unique_products` AS `up`
                     INNER JOIN `{$wpdb->prefix}cdc_products` AS `p` ON (`p`.`id` = `up`.`product_id`)
-                    INNER JOIN `{$wpdb->prefix}cdc_stock_control` AS `sc` ON (
-                        `up`.`primary_ticket_id` = `sc`.`ticket_id` 
-                        AND `p`.`id` = `sc`.`product_id`
-                        AND `sc`.`remaining_stock` > 0
+                    INNER JOIN `stock_min` AS `sm` ON (
+                        `up`.`primary_ticket_id` = `sm`.`ticket_id`
+                        AND `p`.`id` = `sm`.`product_id`
                     )
 					LEFT JOIN `reserved_totals` AS `rt` ON (`p`.`id` = `rt`.`product_id`)
                     LEFT JOIN `{$wpdb->prefix}posts` AS `s` ON (
