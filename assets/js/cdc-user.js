@@ -695,14 +695,14 @@ var ContactEmailIsValid = true;
         $("#billing_postcode").val() != "" ||
         (address != null && address.length > 0)
       ) {
-        $("#billing_postcode").blur();
+        $("#billing_postcode").trigger('keyup');
       }
 
       if (
         $("#shipping_postcode").val() != null ||
         $("#shipping_postcode").val() != ""
       ) {
-        $("#shipping_postcode").blur();
+        $("#shipping_postcode").trigger('keyup');
       }
 
       if ($("#shipping_postcode").val() != $("#billing_postcode").val()) {

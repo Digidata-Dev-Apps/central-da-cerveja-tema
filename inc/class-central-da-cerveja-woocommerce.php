@@ -3977,6 +3977,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 
             $old_zipcode = WC()->session->get('delivery_zipcode');
 
+            WC()->session->set('is_cart', 0);
             if ($old_zipcode != $new_zipcode) {
                 WC()->session->set('zipcode_changed', 1);
             } else {
@@ -4060,12 +4061,13 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             $new_zipcode = WC()->customer->get_shipping_postcode();
             $old_zipcode = WC()->session->get('delivery_zipcode');
 
+            WC()->session->set('is_cart', 1);
             if ($old_zipcode != $new_zipcode) {
                 WC()->session->set('zipcode_changed', 1);
             } else {
                 WC()->session->set('zipcode_changed', 0);
             }
-
+            
             WC()->session->set('delivery_zipcode', $new_zipcode);
         }
     }
