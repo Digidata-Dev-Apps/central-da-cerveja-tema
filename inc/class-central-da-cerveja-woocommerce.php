@@ -1295,9 +1295,9 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             // Cache local das configurações de cada método de frete
             $shipping_settings_cache = [];
             $tax_card = $this->tax_card ?? 0;
-            $fee_additional_percentage = 0;
-            $fee_additional = 0;
             foreach ($rates as $rate_key => $rate) {
+                $fee_additional_percentage = 0;
+                $fee_additional = 0;
                 // Reseta sessões
                 WC()->session->set("cart_shipping_free_{$rate_key}", 0);
                 WC()->session->set("cart_shipping_without_tax_{$rate_key}", null);
