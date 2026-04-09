@@ -3854,7 +3854,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 
                 $available_stock = max($product->get_stock_quantity() - $reserved_qty, 0);
 
-                if ($qty_in_cart > $available_stock) {
+                if ($qty_in_cart > $available_stock && !$product->is_type('bundle')) {
                     wc_clear_notices();
                     wc_add_notice(
                         sprintf(__('Sorry, we do not have enough "%1$s" in stock to fulfill your order (%2$s available). We apologize for any inconvenience caused.', 'woocommerce'), $product->get_name(), wc_format_stock_quantity_for_display($available_stock, $product)),
