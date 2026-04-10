@@ -4045,7 +4045,14 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
         {
             $rodonaves = WC()->session->get('rodonaves_shipping');
 
-            if (!empty($rodonaves) && isset($rodonaves->protocol)) {
+            foreach ( $order->get_shipping_methods() as $shipping_method ) {
+                if ($shipping_method->get_method_id() == 'rodonaves-shipping') {
+                    $has_rodonaves = true;
+                    break;
+                }
+            }
+
+            if (!empty($rodonaves) && isset($rodonaves->protocol) && $has_rodonaves) {
                 $order->update_meta_data('_rodonaves_protocol', $rodonaves->protocol);
             }
 
