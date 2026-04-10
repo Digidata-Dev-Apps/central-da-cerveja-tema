@@ -1109,6 +1109,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             $shipping_total_value = !empty($shipping_value_total) ? $shipping_value_total : $shipping_total;
 
             $shipping_without_tax = $order->get_meta('shipping_value', true);
+            $shipping_without_tax_not_format = $shipping_without_tax;
             $shipping_without_tax = !empty($shipping_without_tax) ? number_format($shipping_without_tax, 2) : $shipping_total_value;
             $shipping_with_tax = $order->get_meta('shipping_total_value', true) ?? 0;
 
@@ -1125,7 +1126,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                     <td class='label'>Frete Transportadora:</td>
                     <td width='1%'></td>
                     <td style='width: 160px !important;' class='total'>
-                       " . wc_price($shipping_without_tax) . "
+                       R$" . number_format($shipping_without_tax_not_format, 2, ',','.') . "
     				</td>
                 </tr>
                 <tr>
