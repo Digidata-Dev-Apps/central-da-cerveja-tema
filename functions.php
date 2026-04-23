@@ -10,7 +10,7 @@ $central_da_cerveja = (object) array(
     'main'              => require_once 'inc/class-central-da-cerveja.php',
     'utils'             => require_once 'inc/class-central-da-cerveja-utils.php',
     'woocommerce'       => require_once 'inc/class-central-da-cerveja-woocommerce.php',
-    'shipping_policies' => require_once 'inc/class-central-da-cerveja-shipping-policies.php',
+    //'shipping_policies' => require_once 'inc/class-central-da-cerveja-shipping-policies.php',
 );
 
 // Desabilita a atualização automatica dos plugins

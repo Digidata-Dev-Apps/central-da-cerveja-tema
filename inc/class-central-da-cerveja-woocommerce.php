@@ -862,118 +862,22 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             global $wpdb;
 
             $filter = sanitize_text_field($filter);
+            $cache_key = 'cdc_search_' . md5($filter);
 
-            $suppliers = $wpdb->get_col($wpdb->prepare("
-                SELECT ID
-                FROM {$wpdb->posts}
-                WHERE post_title LIKE %s
-                AND post_type = 'dwcc_supplier'
-                LIMIT 20
-            ", '%' . $wpdb->esc_like($filter) . '%'));
-
-            if (empty($suppliers)) {
-                $suppliers = [0];
+            $cached_response = get_transient($cache_key);
+            if ($cached_response !== false) {
+                return $cached_response;
             }
 
-            $like = '%' . $wpdb->esc_like($filter) . '%';
+            $sql = $wpdb->prepare(
+                "CALL sp_filter_products_or_entity(%s)",
+                $filter
+            );
 
-            $sql = $wpdb->prepare("
-                SELECT 
-                    p.id,
-                    p.name,
-                    p.slug,
-                    p.supplier_id,
-                    p.approved_date_product,
-                    p.image
-                FROM vludavcbertkv_cdc_products AS p
-                WHERE (
-                        p.name LIKE %s OR
-                        p.slug LIKE %s OR
-                        p.excerpt LIKE %s OR
-                        p.description LIKE %s OR
-                        p.supplier_id IN (" . implode(',', array_map('intval', $suppliers)) . ")
-                )
-                AND p.status = 'publish'
-                AND (p.commercialize_on_kit IS NULL OR p.commercialize_on_kit != 1)
-                ORDER BY p.name ASC
-                LIMIT 10
-            ", $like, $like, $like, $like);
+            $response = $wpdb->get_results($sql, ARRAY_A);
 
-            $products = $wpdb->get_results($sql, ARRAY_A);
-            if (empty($products)) return [];
-
-
-            $ids = array_column($products, 'id');
-            $ids_str = implode(',', array_map('intval', $ids));
-
-            $wp_meta = $wpdb->get_results("
-                SELECT 
-                    post.ID,
-                    pm_sale.meta_value AS sale_price,
-                    pm_regular.meta_value AS regular_price,
-                    pm_thumbnail.meta_value AS thumbnail_id,
-                    pm_image.meta_value AS image,
-                    pm_kit.meta_value AS kit_full_price,
-                    pm_approved.meta_value AS approved_date,
-                    pm_supplier.meta_value AS supplier_id_real,
-                    pm_ipi.meta_value AS ipi
-                FROM {$wpdb->posts} AS post
-                LEFT JOIN {$wpdb->postmeta} AS pm_sale 
-                    ON pm_sale.post_id = post.ID AND pm_sale.meta_key = '_sale_price'
-                LEFT JOIN {$wpdb->postmeta} AS pm_regular 
-                    ON pm_regular.post_id = post.ID AND pm_regular.meta_key = '_regular_price'
-                LEFT JOIN {$wpdb->postmeta} AS pm_thumbnail 
-                    ON pm_thumbnail.post_id = post.ID AND pm_thumbnail.meta_key = '_thumbnail_id'
-                LEFT JOIN {$wpdb->postmeta} AS pm_image 
-                    ON pm_image.post_id = pm_thumbnail.meta_value AND pm_image.meta_key = '_wp_attached_file'
-                LEFT JOIN {$wpdb->postmeta} AS pm_kit
-                    ON pm_kit.post_id = post.ID AND pm_kit.meta_key = '_kit_full_price'
-                LEFT JOIN {$wpdb->postmeta} AS pm_approved
-                    ON pm_approved.post_id = post.ID AND pm_approved.meta_key = '_approved_date_product'
-                LEFT JOIN {$wpdb->postmeta} AS pm_supplier
-                    ON pm_supplier.post_id = post.ID AND pm_supplier.meta_key = '_supplier_id'
-                LEFT JOIN {$wpdb->postmeta} AS pm_ipi
-                    ON pm_ipi.post_id = pm_supplier.meta_value AND pm_ipi.meta_key = '_ipi_tax'
-                WHERE post.ID IN ($ids_str)
-                AND post.post_type = 'product'
-                LIMIT 100
-            ", ARRAY_A);
-
-
-            $suppliers_data = [];
-            if (!empty($suppliers)) {
-                $supplier_rows = $wpdb->get_results("
-                    SELECT ID, post_title
-                    FROM {$wpdb->posts}
-                    WHERE ID IN (" . implode(',', array_map('intval', $suppliers)) . ")
-                ", ARRAY_A);
-
-                foreach ($supplier_rows as $s) {
-                    $suppliers_data[$s['ID']] = $s['post_title'];
-                }
-            }
-
-            $response = [];
-
-            foreach ($products as $p) {
-                $id = $p['id'];
-                $meta = $wp_meta[$id] ?? null;
-
-                $supplier_id = $meta['supplier_id_real'] ?? $p['supplier_id'];
-                $supplier_name = $suppliers_data[$supplier_id] ?? null;
-
-                $response[] = [
-                    "ID"            => (string)$id,
-                    "post_title"    => $p['name'],
-                    "post_name"     => $p['slug'],
-                    "sale_price"    => $meta['sale_price'] ?? 0,
-                    "regular_price" => $meta['regular_price'] ?? 0,
-                    "image"         => $meta['image'] ?? $p['image'],
-                    "kit_full_price" => $meta['kit_full_price'] ?? 0,
-                    "approved_date" => $meta['approved_date'] ?? $p['approved_date_product'],
-                    "supplier_name" => $supplier_name,
-                    "ipi"           => $meta['ipi'] ?? "0",
-                ];
+            if (!empty($response)) {
+                set_transient($cache_key, $response, 300);
             }
 
             return $response;
@@ -3226,7 +3130,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             global $wpdb;
             $result = $wpdb->get_row("
                 SELECT ticket_id FROM {$wpdb->prefix}cdc_ticket_products WHERE product_id = {$product_id} AND status = 'ativo' ORDER BY `date`;
-            ", ARRAY_A);
+                    ", ARRAY_A);
 
             return $result['ticket_id'] ?? '';
         }
@@ -3615,7 +3519,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                     FROM `unique_products` AS `up`
                     INNER JOIN `{$wpdb->prefix}cdc_products` AS `p` ON (`p`.`id` = `up`.`product_id`)
                     INNER JOIN `stock_min` AS `sm` ON (
-                        `up`.`primary_ticket_id` = `sm`.`ticket_id`
+                        `up`.`primary_ticket_id` = `sm`.`ticket_id` 
                         AND `p`.`id` = `sm`.`product_id`
                     )
 					LEFT JOIN `reserved_totals` AS `rt` ON (`p`.`id` = `rt`.`product_id`)

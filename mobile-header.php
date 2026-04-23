@@ -101,6 +101,13 @@
     <div class="cdc-nav__search">
         <div class="cdc-search input-group search-box">
             <form class="cdc-search__form" role="search" method="get" action="<?php echo esc_url(home_url('/')); ?>">
+                <!-- Loading Indicator -->
+                <div class="cdc-search__loading" style="display:none;">
+                    <div class="cdc-search__loading-spinner">
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span class="cdc-search__loading-text"><?php echo __('Pesquisando...', 'central-da-cerveja'); ?></span>
+                    </div>
+                </div>
                 <input type="search" id="woocommerce-product-search-field-<?php echo isset($index) ? absint($index) : 0; ?>" class="form-control search_field" value="<?php echo get_search_query(); ?>" name="s" />
                 <button type="submit" class="input-group-text"><img src="<?php echo get_template_directory_uri() . "/assets/img/menu/lupa.png" ?>"></button>
                 <input type="hidden" name="post_type" value="product" />
