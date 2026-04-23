@@ -91,7 +91,7 @@ foreach ($product_categories as $key => $cat) {
         $wc_query = new WP_Query($params);
 
         if (!empty($wc_query->posts)) {
-          echo do_shortcode('[products ids="' . implode(',', $wc_query->posts) . '" per_page="12" columns="4" order="asc" paginate="true"]');
+          echo do_shortcode('[products ids="' . implode(",", $wc_query->posts) . '" per_page="12" columns="4" order="asc" orderby="name" paginate="true"]');
         } else {
         ?>
           <p class="woocommerce-info fw-bold"><?php esc_html_e('No products were found matching your selection.', 'woocommerce'); ?></p>
