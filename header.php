@@ -48,11 +48,19 @@ global $central_da_cerveja;
                 <div class="cdc-nav__search">
                   <div class="cdc-search input-group search-box">
                     <form class="cdc-search__form" role="search" method="get" action="<?php echo esc_url(home_url('/')); ?>">
+                      <!-- Loading Indicator -->
+                      <div class="cdc-search__loading" style="display:none;">
+                        <div class="cdc-search__loading-spinner">
+                          <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          <span class="cdc-search__loading-text"><?php echo __('Pesquisando...', 'central-da-cerveja'); ?></span>
+                        </div>
+                      </div>
                       <input type="search" autocomplete="off" id="woocommerce-product-search-field-<?php echo isset($index) ? absint($index) : 0; ?>" class="not_remove_element form-control search_field" value="<?php echo get_search_query(); ?>" name="s" />
                       <button type="submit" class="not_remove_element input-group-text"><img class="not_remove_element" src="<?php echo get_template_directory_uri() . "/assets/img/menu/lupa.png" ?>"></button>
                       <input type="hidden" name="post_type" value="product" />
                       <input type="hidden" name="orderby" value="price-desc" />
                     </form>
+                    <!-- Search Results -->
                     <div class="cdc-search_products_by_name" style="display:none;">
                       <ul class="not_remove_element"></ul>
                     </div>
@@ -340,13 +348,13 @@ global $central_da_cerveja;
                               <div class="submenu-item__header">
                                 <h4 class="submenu-item__title"><?php echo __('Conheça as principais cervejas por fabricante', 'central-da-cerveja'); ?></h4>
                               </div>
-                              <div class="submenu-item__content"> 
+                              <div class="submenu-item__content">
                                 <?php
-                                  $attr_vendor = $central_da_cerveja->woocommerce->get_suppliers_with_stock();
-                                  if (!empty($attr_vendor)){
-                                    $columns = array_chunk($attr_vendor, 18);
-                                    foreach ($columns as $colum) {
-                                  ?>
+                                $attr_vendor = $central_da_cerveja->woocommerce->get_suppliers_with_stock();
+                                if (!empty($attr_vendor)) {
+                                  $columns = array_chunk($attr_vendor, 18);
+                                  foreach ($columns as $colum) {
+                                ?>
                                     <div class="submenu-item__column">
                                       <?php foreach ($colum as $item) { ?>
                                         <a href="<?php echo esc_url(home_url('/por-cervejaria/' . $item['post_name'])); ?>" class="submenu-item__link">
@@ -355,7 +363,7 @@ global $central_da_cerveja;
                                       <?php } ?>
                                     </div>
                                   <?php } ?>
-                                <?php }else{ ?>
+                                <?php } else { ?>
                                   <p class="text-center text-dark mt-4 w-100"><?php echo __('Nenhum resultado encontrado!', 'central-da-cerveja'); ?></p>
                                 <?php } ?>
                               </div>

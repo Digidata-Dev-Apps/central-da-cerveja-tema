@@ -262,7 +262,7 @@ window.addEventListener("load", () => {
       var date = new Date($(this).val() + "-1");
       var options = { year: "numeric", month: "long" };
       var date_written = date.toLocaleDateString("pt-BR", options);
-      date_written = event.target.value.length == 0 ? '' : `de ${date_written}`;
+      date_written = event.target.value.length == 0 ? "" : `de ${date_written}`;
       switch ($(this).data("plan-id")) {
         case 6452:
           subscription_name = "#apreciadores";
@@ -313,8 +313,9 @@ window.addEventListener("load", () => {
                 $(subscription_name).append(`
 								<div class="cdc-clube-plans-products__item row mt-4">
 									<div class="col-12 col-md-3 text-center">
-										<img style="height:200px;" src="${element.product_image
-                  }" alt="produto" class="img-fluid">
+										<img style="height:200px;" src="${
+                      element.product_image
+                    }" alt="produto" class="img-fluid">
 									</div>
 									<div class="col-12 col-md-9 d-flex flex-column justify-content-center">
 										<div class="cdc-clube-plans-products__item-country">
@@ -342,13 +343,14 @@ window.addEventListener("load", () => {
 												</div>
 												<div class="col-12 col-md-6">
 													<b>Temperatura Ideal: </b>
-													<span>${element.temperature_start
-                    ? "Entre " +
-                    element.temperature_start +
-                    " E " +
-                    element.temperature_end
-                    : "--"
-                  }</span>
+													<span>${
+                            element.temperature_start
+                              ? "Entre " +
+                                element.temperature_start +
+                                " E " +
+                                element.temperature_end
+                              : "--"
+                          }</span>
 												</div>
 												<div class="col-12 col-md-6">
 													<b>Embalagem: </b>
@@ -421,9 +423,15 @@ window.addEventListener("load", () => {
     if ($("body").hasClass("single-product")) {
       var imgtodrag = $(".woocommerce-product-gallery figure div a img");
     } else {
-      if($(this).hasClass('cdc-product__add_to_cart')){
-        var imgtodrag = $(this).parent().parent().parent().children().children().first();
-      }else{
+      if ($(this).hasClass("cdc-product__add_to_cart")) {
+        var imgtodrag = $(this)
+          .parent()
+          .parent()
+          .parent()
+          .children()
+          .children()
+          .first();
+      } else {
         var imgtodrag = $(this).parent().children().children().first();
       }
     }
@@ -466,6 +474,30 @@ window.addEventListener("load", () => {
     }
   });
 
+  // Cache system for search results (5 minutes TTL)
+  const searchCache = {
+    set(key, value, ttl = 300000) {
+      sessionStorage.setItem(
+        `cdc_search_cache_${key}`,
+        JSON.stringify({
+          data: value,
+          timestamp: Date.now() + ttl,
+        }),
+      );
+    },
+    get(key) {
+      const cached = sessionStorage.getItem(`cdc_search_cache_${key}`);
+      if (!cached) return null;
+
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() > timestamp) {
+        sessionStorage.removeItem(`cdc_search_cache_${key}`);
+        return null;
+      }
+      return data;
+    },
+  };
+
   async function request(filter) {
     try {
       const response = await $.post(`${cdc_user.ajax_url}`, {
@@ -477,22 +509,71 @@ window.addEventListener("load", () => {
       if (error.status != 200) {
         $(".cdc-search_products_by_name ul").empty();
         $(".cdc-search_products_by_name").show();
+        $(".cdc-search__loading").hide();
         $(".cdc-search_products_by_name ul").append(
-          `<li class="not_remove_element product_not_found_in_search" data-bs-toggle="tooltip" data-bs-placement="top" title=""><a class="not_remove_element">Produto não Encontrado</a></li>`,
+          `<li class="not_remove_element product_not_found_in_search" data-bs-toggle="tooltip" data-bs-placement="top" title=""><a class="not_remove_element"><?php echo __('Produto não Encontrado', 'central-da-cerveja'); ?></a></li>`,
         );
         return error.status;
       }
     }
   }
 
-  // Aviso de quando usuário acessa outro menu com a aplicação em andamento (00001272).
+  // Search execution with cache and visual feedback
   async function execute_function(characteresPress) {
-    const data = await request(characteresPress.value);
-    // console.log(data)
-    if (data == 404) return;
+    const searchTerm = characteresPress.value.trim();
+
+    // Check cache first
+    const cachedData = searchCache.get(searchTerm);
+    if (cachedData) {
+      renderSearchResults(cachedData);
+      return;
+    }
+
+    // Show loading state
+    $(".cdc-search__loading").show();
+    $(".cdc-search_products_by_name").hide();
+
+    const data = await request(searchTerm);
+
+    // Hide loading indicator
+    $(".cdc-search__loading").hide();
+
+    if (data == 404) {
+      $(".cdc-search_products_by_name ul").empty();
+      $(".cdc-search_products_by_name").show();
+      $(".cdc-search_products_by_name ul").append(
+        `<li class="not_remove_element product_not_found_in_search text-center p-3">
+          <span class="not_remove_element text-muted"><?php echo __('Nenhum produto encontrado', 'central-da-cerveja'); ?></span>
+        </li>`,
+      );
+      searchCache.set(searchTerm, []);
+      return;
+    }
+
+    // Cache the results
+    searchCache.set(searchTerm, data.response);
+
+    // Render results
+    renderSearchResults(data.response);
+  }
+
+  // Render search results
+  function renderSearchResults(results) {
+    if (!results || results.length === 0) {
+      $(".cdc-search_products_by_name ul").empty();
+      $(".cdc-search_products_by_name").show();
+      $(".cdc-search_products_by_name ul").append(
+        `<li class="not_remove_element text-center p-3">
+          <span class="not_remove_element text-muted"><?php echo __('Nenhum produto encontrado', 'central-da-cerveja'); ?></span>
+        </li>`,
+      );
+      return;
+    }
+
     $(".cdc-search_products_by_name ul").empty();
     $(".cdc-search_products_by_name").show();
-    $(data.response).each((_index, element) => {
+
+    results.forEach((element) => {
       let product_name =
         element.post_title.length >= 10
           ? element.post_title.substring(0, 20) + "..."
@@ -525,9 +606,9 @@ window.addEventListener("load", () => {
       let ipi = element.ipi ? element.ipi.replace(/,/g, ".") : 0;
       let is_kit_full_price = element.kit_full_price
         ? parseFloat(element.kit_full_price) +
-        parseFloat(element.kit_full_price * (ipi / 100))
+          parseFloat(element.kit_full_price * (ipi / 100))
         : parseFloat(element.regular_price) +
-        parseFloat(element.regular_price * (ipi / 100));
+          parseFloat(element.regular_price * (ipi / 100));
 
       let sale_price_del_price = `<del class="not_remove_element">${formatter.format(
         is_kit_full_price,
@@ -544,46 +625,46 @@ window.addEventListener("load", () => {
       let sale_price_or_kit_price = element.kit_full_price
         ? element.regular_price
         : sale_price;
-      console.log(element)
+
       $(".cdc-search_products_by_name ul").append(`
-                <li class="not_remove_element" data-bs-toggle="tooltip" data-bs-placement="top" title="${element.post_title
-        }">
+        <li class="not_remove_element" data-bs-toggle="tooltip" data-bs-placement="top" title="${element.post_title}">
+          <div class="row not_remove_element">
+            <div class="col-lg-8 col-sm-8 not_remove_element">
+              <a class="not_remove_element" href="/produto/${element.post_name}">
                 <div class="row not_remove_element">
-                  <div class="col-lg-8 col-sm-8 not_remove_element">
-                    <a class="not_remove_element " href="/produto/${element.post_name
-        }">
-                        <div class="row not_remove_element">
-                            <div class="col-3 col-md-2 not_remove_element search_products_image d-flex align-items-center">
-                                <img class="not_remove_element search_image" src="${image}">
-                            </div>
-                            <div class="not_remove_element col-9 col-md-10">
-                                <p class="not_remove_element ms-3 search_products_name line-clamp-3">${element.term_name
-          ? product_name + " - "
-          : product_name
-        }</p>
-                                <p class="not_remove_element ms-3 font_size-search_products"><span class="not_remove_element">${element.supplier_name
-          ? element.supplier_name + " - "
-          : ""
-        }</span>${sale_price_or_kit_price
-          ? sale_price_del_price
-          : formatter.format(regular_price)
-        } <span class="not_remove_element ms-2">${sale_price_or_kit_price
-          ? formatter.format(sale_price_or_kit_price)
-          : ""
-        }</span></p>
-                            </div>
-                        </div>
-                      
-                    </a>
+                  <div class="col-3 col-md-2 not_remove_element search_products_image d-flex align-items-center">
+                    <img class="not_remove_element search_image" src="${image}">
                   </div>
-                  <div class="col-lg-3 col-sm-3 not_remove_element mt-2">
-                    <button class="not_remove_element button product_type_simple add_to_cart_button ajax_add_to_cart add_button_searched" data-product_id="${element.ID}" data-product_sku="291">Adicionar ao carrinho</button>
+                  <div class="not_remove_element col-9 col-md-10">
+                    <p class="not_remove_element ms-3 search_products_name line-clamp-3">${
+                      element.term_name ? product_name + " - " : product_name
+                    }</p>
+                    <p class="not_remove_element ms-3 font_size-search_products">
+                      <span class="not_remove_element">${
+                        element.supplier_name
+                          ? element.supplier_name + " - "
+                          : ""
+                      }</span>${
+                        sale_price_or_kit_price
+                          ? sale_price_del_price
+                          : formatter.format(regular_price)
+                      } 
+                      <span class="not_remove_element ms-2">${
+                        sale_price_or_kit_price
+                          ? formatter.format(sale_price_or_kit_price)
+                          : ""
+                      }</span>
+                    </p>
                   </div>
                 </div>
-                    
-                    
-                </li>
-            `);
+              </a>
+            </div>
+            <div class="col-lg-3 col-sm-3 not_remove_element mt-2">
+              <button class="not_remove_element button product_type_simple add_to_cart_button ajax_add_to_cart add_button_searched" data-product_id="${element.ID}" data-product_sku="291">Adicionar ao carrinho</button>
+            </div>
+          </div>
+        </li>
+      `);
     });
   }
 
@@ -600,29 +681,54 @@ window.addEventListener("load", () => {
         shipping_method: checked_shipping_method,
       },
       success: function (response) {
-        $('.free-shipping-notice').remove();
+        $(".free-shipping-notice").remove();
         if (response.status) {
           $(".cart_totals .shop_table tbody > tr:nth-child(1)").after(`
               <tr class="free-shipping-notice">
                 <td></td>
                 <td style="color: red;">${response.message}</td>
               </tr>
-            `)
+            `);
         }
-      }
+      },
     });
   }
+
+  let searchDropdownTimeout = null;
 
   document.addEventListener("mouseover", (event) => {
     const e = event.target;
     if (
       e.classList.contains("cdc-search__form") ||
-      e.classList.contains('search-box"') ||
+      e.classList.contains("search-box") ||
       e.classList.contains("cdc-search_products_by_name") ||
-      e.classList.contains("not_remove_element")
-    )
+      e.classList.contains("not_remove_element") ||
+      e.closest(".cdc-search_products_by_name") ||
+      e.closest(".cdc-search__form")
+    ) {
+      clearTimeout(searchDropdownTimeout);
       return;
-    $(".cdc-search_products_by_name").hide();
+    }
+
+    clearTimeout(searchDropdownTimeout);
+    searchDropdownTimeout = setTimeout(() => {
+      $(".cdc-search_products_by_name").hide();
+      $(".cdc-search__loading").hide();
+    }, 200);
+  });
+
+  document.addEventListener("click", (event) => {
+    const e = event.target;
+    if (
+      !e.classList.contains("cdc-search__form") &&
+      !e.classList.contains("search_field") &&
+      !e.classList.contains("not_remove_element") &&
+      !e.closest(".cdc-search_products_by_name") &&
+      !e.closest(".cdc-search__form")
+    ) {
+      $(".cdc-search_products_by_name").hide();
+      $(".cdc-search__loading").hide();
+    }
   });
 
   var timer = null;
@@ -655,41 +761,52 @@ window.addEventListener("load", () => {
     $(".filter-by-price-wrapper").slideToggle();
   });
 
-  if (document.body.classList.contains('woocommerce-checkout')) {
-    $(document).on('click', '#place_order', function (event) {
+  if (document.body.classList.contains("woocommerce-checkout")) {
+    $(document).on("click", "#place_order", function (event) {
       event.preventDefault();
 
       let subscription = $("#order_review td[data-is-subscription='1']");
       if (subscription && subscription.length > 0) {
-        $(document).on('click', '#confirm_purchase', function () {
-          let checkbox = $(document).find('#checkbox_confirm_subscription')
-          let accept_conditions_label = $(document).find('#subscription_accept_conditions');
-          if ($(checkbox).is(':checked')) {
-            $(accept_conditions_label).removeClass('confirm-subscription-conditions-error');
-            $('.btn-close').trigger('click');
-            $('#checkout').trigger('submit');
+        $(document).on("click", "#confirm_purchase", function () {
+          let checkbox = $(document).find("#checkbox_confirm_subscription");
+          let accept_conditions_label = $(document).find(
+            "#subscription_accept_conditions",
+          );
+          if ($(checkbox).is(":checked")) {
+            $(accept_conditions_label).removeClass(
+              "confirm-subscription-conditions-error",
+            );
+            $(".btn-close").trigger("click");
+            $("#checkout").trigger("submit");
           } else {
-            $(accept_conditions_label).addClass('confirm-subscription-conditions-error');
+            $(accept_conditions_label).addClass(
+              "confirm-subscription-conditions-error",
+            );
           }
         });
       } else {
-        $('#checkout').trigger('submit');
-		$('#place_order').trigger('submit');
+        $("#checkout").trigger("submit");
+        $("#place_order").trigger("submit");
       }
     });
   }
-	
-  $(document.body).on('checkout_error', function (event, error_message) {
 
-   
-    $( document.body ).trigger( 'update_checkout');
+  $(document.body).on("checkout_error", function (event, error_message) {
+    $(document.body).trigger("update_checkout");
+  });
 
-  });  
-
-  if ($('body').hasClass('woocommerce-edit-address') && $('#update_all_subscriptions_addresses').length > 0) {
-    $('#update_all_subscriptions_addresses').prop('checked', true);
-    $('#update_all_subscriptions_addresses').parent().css('pointer-events', 'none')
-    $('#update_all_subscriptions_addresses').attr('style', 'color:gray;accent-color:gray;');
+  if (
+    $("body").hasClass("woocommerce-edit-address") &&
+    $("#update_all_subscriptions_addresses").length > 0
+  ) {
+    $("#update_all_subscriptions_addresses").prop("checked", true);
+    $("#update_all_subscriptions_addresses")
+      .parent()
+      .css("pointer-events", "none");
+    $("#update_all_subscriptions_addresses").attr(
+      "style",
+      "color:gray;accent-color:gray;",
+    );
   }
 })(jQuery);
 
