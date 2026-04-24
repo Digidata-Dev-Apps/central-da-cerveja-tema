@@ -185,42 +185,97 @@ global $central_da_cerveja;
                                 <h4 class="submenu-item__title"><?php echo __('Conheça as principais cervejas por estilo', 'central-da-cerveja'); ?></h4>
                               </div>
                               <div class="submenu-item__content">
-                                <?php
-                                $attr_style = get_terms([
-                                  'taxonomy' => 'pa_por-estilo',
-                                  'order' => 'ASC',
-                                  'hide_empty' => true,
-                                  'orderby' => 'name',
-                                  'number' => 30
-                                ]);
-                                if (!empty($attr_style) && !isset($attr_style->errors)) {
-                                  $columns = array_chunk($attr_style, 10);
-                                  if (isset($columns[2][9])) {
-                                    array_push($columns[2], [10]);
-                                  }
-                                  foreach ($columns as $colum) {
-                                ?>
-                                    <div class="submenu-item__column">
-                                      <?php
-                                      foreach ($colum as $item) {
-                                        if (isset($item->name)) {
-                                      ?>
-                                          <a href="<?php echo get_term_link($item); ?>" class="submenu-item__link"><?php echo $item->name; ?></a>
-                                        <?php
-                                        } else { ?>
-                                          <a href="/por-estilo" class="submenu-item__link">VER MAIS...</a>
-                                      <?php }
-                                      }
-                                      ?>
-                                    </div>
                                   <?php
+                                    $terms = get_terms([
+                                        'taxonomy'   => 'pa_por-estilo',
+                                        'hide_empty' => false,
+                                    ]);
+
+                                    if (!empty($terms) && !is_wp_error($terms)) {
+                                      foreach ($terms as $term) {
+                                          $args = [
+                                              'post_type'      => 'product',
+                                              'post_status'    => 'publish',
+                                              'posts_per_page' => -1,
+                                              'fields'         => 'ids',
+                                              'tax_query'      => [
+                                                  'relation' => 'AND',
+                                                  [
+                                                      'taxonomy' => 'pa_por-estilo',
+                                                      'field'    => 'term_id',
+                                                      'terms'    => $term->term_id,
+                                                  ],
+                                                  [
+                                                      'taxonomy' => 'product_visibility',
+                                                      'field'    => 'slug',
+                                                      'terms'    => array('exclude-from-catalog'),
+                                                      'operator' => 'NOT IN',
+                                                  ],
+                                              ],
+                                              'meta_query' => [
+                                                  'relation' => 'AND',
+                                                  [
+                                                      'key'     => '_stock_status',
+                                                      'value'   => 'outofstock',
+                                                      'compare' => 'NOT IN'
+                                                  ],
+                                                  [
+                                                      'relation' => 'OR',
+                                                      ['key' => '_commercialize_on_kit', 'compare' => 'NOT EXISTS'],
+                                                      ['key' => '_commercialize_on_kit', 'value' => 1, 'compare' => '!=']
+                                                  ],
+                                                  [
+                                                      'relation' => 'OR',
+                                                      ['key' => '_supplier_certificate_expired', 'compare' => 'NOT EXISTS'],
+                                                      ['key' => '_supplier_certificate_expired', 'value' => 1, 'compare' => '!=']
+                                                  ],
+                                              ]
+                                          ];
+
+                                          $query = new WP_Query($args);
+                                          $term->real_count = $query->found_posts;
+                                      }
+
+                                      usort($terms, function($a, $b) {
+                                          return $b->real_count <=> $a->real_count;
+                                      });
+
+                                      $top_terms = array_slice($terms, 0, 30);
+
+                                      $columns = array_chunk($top_terms, 10);
+
+                                      if (isset($columns[2]) && count($columns[2]) === 10) {
+                                          $columns[2][] = 'ver_mais_trigger';
+                                      }
+
+                                      foreach ($columns as $column) {
+                                          ?>
+                                          <div class="submenu-item__column">
+                                              <?php
+                                              foreach ($column as $item) {
+                                                  if (is_object($item)) {
+                                                   
+                                                      ?>
+                                                      <a href="<?php echo get_term_link($item); ?>" class="submenu-item__link">
+                                                          <?php echo $item->name; ?>
+                                                      </a>
+                                                      <?php
+                                                  } elseif ($item === 'ver_mais_trigger') { 
+                                                      ?>
+                                                      <a href="/por-estilo" class="submenu-item__link"><strong>VER MAIS...</strong></a>
+                                                  <?php 
+                                                  }
+                                              }
+                                              ?>
+                                          </div>
+                                          <?php
+                                      }
+                                  } else {
+                                      ?>
+                                      <p class="text-center text-dark mt-4 w-100"><?php echo __('Nenhum resultado encontrado!', 'central-da-cerveja'); ?></p>
+                                      <?php
                                   }
-                                } else {
                                   ?>
-                                  <p class="text-center text-dark mt-4 w-100"><?php echo __('Nenhum resultado encontrado!', 'central-da-cerveja'); ?></p>
-                                <?php
-                                }
-                                ?>
                               </div>
                             </li>
                           </ul>

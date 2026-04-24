@@ -778,6 +778,16 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                                     'compare' => '!='
                                 ),
                             )
+                        ),
+                    );
+
+                    $query->set(
+                        'tax_query',
+                        array(
+                            'taxonomy' => 'product_visibility',
+                            'field'    => 'slug',
+                            'terms'    => array('exclude-from-catalog'),
+                            'operator' => 'NOT IN',
                         )
                     );
                 }
