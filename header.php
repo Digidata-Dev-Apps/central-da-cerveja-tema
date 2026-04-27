@@ -178,7 +178,7 @@ global $central_da_cerveja;
                           </ul>
                         </li>
                         <li class="menu-item">
-                          <a href="javascript:void(0);">Por Estilo</a>
+                          <a href="/por-estilo">Por Estilo</a>
                           <ul class="submenu">
                             <li class="submenu-item submenu-item__container">
                               <div class="submenu-item__header">
@@ -254,10 +254,9 @@ global $central_da_cerveja;
                                               <?php
                                               foreach ($column as $item) {
                                                   if (is_object($item)) {
-                                                   
                                                       ?>
                                                       <a href="<?php echo get_term_link($item); ?>" class="submenu-item__link">
-                                                          <?php echo $item->name; ?>
+                                                          <?php echo $item->name . ' (' . $item->real_count . ')'; ?>
                                                       </a>
                                                       <?php
                                                   } elseif ($item === 'ver_mais_trigger') { 
