@@ -85,6 +85,10 @@ do_action('woocommerce_before_customer_login_form');
 		<div class="row">
 			<div class="col-12 container-fluid p-0">
 				<form id="woocommerce_register" method="post">
+					<div style="position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden;" aria-hidden="true">
+						<label for="register_company"><?php echo __('Empresa', 'central-da-cerveja'); ?></label>
+						<input type="text" name="register_company" id="register_company" tabindex="-1" autocomplete="off">
+					</div>
 					<?php wp_nonce_field('woocommerce-register', 'woocommerce-register-nonce'); ?>
 					<div class="row">
 						<div class="col-12 mb-4">

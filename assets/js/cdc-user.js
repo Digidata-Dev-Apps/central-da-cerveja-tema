@@ -248,66 +248,70 @@ var ContactEmailIsValid = true;
         return;
       }
 
-      const formData = {
-        action: "user_register",
-        first_name: $("#first_name").val(),
-        last_name: $("#last_name").val(),
-        email: $("#email").val(),
-        password: $("#register_password").val(),
-        cpf: $("#cpf").val(),
-        phone: $("#phone").val(),
-        mobile: $("#mobile").val(),
-        postcode: $("#postcode").val(),
-        address: $("#address").val(),
-        number: $("#number").val(),
-        complement: $("#complement").val(),
-        county: $("#county").val(),
-        city: $("#city").val(),
-        state: $("#state").val(),
-        woocommerce_nonce: $("#woocommerce-register-nonce").val(),
-      };
+      executeRecaptcha("user_register").then(function (token) {
+        const formData = {
+          action: "user_register",
+          first_name: $("#first_name").val(),
+          last_name: $("#last_name").val(),
+          email: $("#email").val(),
+          password: $("#register_password").val(),
+          cpf: $("#cpf").val(),
+          phone: $("#phone").val(),
+          mobile: $("#mobile").val(),
+          postcode: $("#postcode").val(),
+          address: $("#address").val(),
+          number: $("#number").val(),
+          complement: $("#complement").val(),
+          county: $("#county").val(),
+          city: $("#city").val(),
+          state: $("#state").val(),
+          register_company: $("#register_company").val(),
+          recaptcha_token: token,
+          woocommerce_nonce: $("#woocommerce-register-nonce").val(),
+        };
 
-      $.ajax({
-        url: cdc_user.ajax_url,
-        type: "POST",
-        dataType: "json",
-        data: formData,
-        beforeSend: function () {
-          $btn.prop("disabled", true).text("Cadastrando...");
-          $form.block({
-            message: null,
-            overlayCSS: { background: "#fff", opacity: 0.6 },
-          });
-        },
-        success: function (response) {
-          $form.unblock();
-          $btn.prop("disabled", false).text("Cadastrar");
+        $.ajax({
+          url: cdc_user.ajax_url,
+          type: "POST",
+          dataType: "json",
+          data: formData,
+          beforeSend: function () {
+            $btn.prop("disabled", true).text("Cadastrando...");
+            $form.block({
+              message: null,
+              overlayCSS: { background: "#fff", opacity: 0.6 },
+            });
+          },
+          success: function (response) {
+            $form.unblock();
+            $btn.prop("disabled", false).text("Cadastrar");
 
-          if (response.success && response.data?.status) {
-            showMessage(response.data.message || "Cadastro realizado com sucesso, redirecionado...", "success");
-            setTimeout(() => {
-              window.location.href = "/";
-            }, 1200);
-          } else {
-            const msg =
-              response.data?.message ||
-              "Não foi possível concluir o cadastro. Verifique os dados e tente novamente.";
+            if (response.success && response.data?.status) {
+              showMessage(response.data.message || "Cadastro realizado com sucesso, redirecionado...", "success");
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 1200);
+            } else {
+              const msg =
+                response.data?.message ||
+                "Não foi possível concluir o cadastro. Verifique os dados e tente novamente.";
+              showMessage(msg, "error");
+            }
+          },
+          error: function (xhr, status, error) {
+            $form.unblock();
+            $btn.prop("disabled", false).text("Cadastrar");
+
+            let msg = "Erro inesperado. Verifique sua conexão e tente novamente.";
+            if (xhr.responseJSON?.data?.message) {
+              msg = xhr.responseJSON.data.message;
+            } else if (error) {
+              msg = `Erro: ${error}`;
+            }
+
             showMessage(msg, "error");
-          }
-        },
-        error: function (xhr, status, error) {
-          $form.unblock();
-          $btn.prop("disabled", false).text("Cadastrar");
-
-          let msg = "Erro inesperado. Verifique sua conexão e tente novamente.";
-          if (xhr.responseJSON?.data?.message) {
-            msg = xhr.responseJSON.data.message;
-          } else if (error) {
-            msg = `Erro: ${error}`;
-          }
-
-          showMessage(msg, "error");
-        },
+          },
+        });
       });
 
       /**
@@ -724,6 +728,31 @@ var ContactEmailIsValid = true;
       return regex.test(email);
     }
 
+    const RECAPTCHA_SITE_KEY = "6Lf1vDceAAAAACfQThQ_giVw6d0zuetRgNpcmhWQ";
+
+    function executeRecaptcha(action) {
+      return new Promise(function (resolve) {
+        if (
+          typeof grecaptcha === "undefined" ||
+          typeof grecaptcha.execute !== "function"
+        ) {
+          resolve("");
+          return;
+        }
+
+        grecaptcha.ready(function () {
+          grecaptcha
+            .execute(RECAPTCHA_SITE_KEY, { action: action })
+            .then(function (token) {
+              resolve(token || "");
+            })
+            .catch(function () {
+              resolve("");
+            });
+        });
+      });
+    }
+
     $("#contact-us-form").validate({
       rules: {
         contact_us_name: {
@@ -754,46 +783,49 @@ var ContactEmailIsValid = true;
         ContactPhoneIsValid &&
         ContactEmailIsValid
       ) {
-        $.ajax({
-          type: "POST",
-          dataType: "JSON",
-          url: cdc_user.ajax_url,
-          data: {
-            action: "cdc_contact_us",
-            name: $("#contact_us_name").val(),
-            phone: $("#contact_us_phone").val(),
-            email: $("#contact_us_email").val(),
-            subject: $("#contact_us_subject").val(),
-            message: $("#contact_us_message").val(),
-            logged_user: $("#logged_user").val(),
-            woocommerce_nonce: $("#woocommerce-contact-us-nonce").val(),
-            token: $("#generate_token").val(),
-          },
-          success: function (response) {
-            if (response.status) {
-              $("#contact-us-form").html(null);
-              $(".send-your-thoughts").html(null);
-              $(".contact-us-div").html(`
-                <div>
-                  <p class="mt-3 mb-3" style="font-family: 'Gotham bold'; color: #535353;">Mensagem enviada com sucesso.</p>
-                  <p class="mb-3" style="font-family: 'Gotham bold'; color: #535353;">Logo entraremos em contato.</p>
+        executeRecaptcha("contact_us").then(function (token) {
+          $.ajax({
+            type: "POST",
+            dataType: "JSON",
+            url: cdc_user.ajax_url,
+            data: {
+              action: "cdc_contact_us",
+              name: $("#contact_us_name").val(),
+              phone: $("#contact_us_phone").val(),
+              email: $("#contact_us_email").val(),
+              subject: $("#contact_us_subject").val(),
+              message: $("#contact_us_message").val(),
+              logged_user: $("#logged_user").val(),
+              contact_us_company: $("#contact_us_company").val(),
+              woocommerce_nonce: $("#woocommerce-contact-us-nonce").val(),
+              token: token || $("#generate_token").val(),
+            },
+            success: function (response) {
+              if (response.status) {
+                $("#contact-us-form").html(null);
+                $(".send-your-thoughts").html(null);
+                $(".contact-us-div").html(`
+                  <div>
+                    <p class="mt-3 mb-3" style="font-family: 'Gotham bold'; color: #535353;">Mensagem enviada com sucesso.</p>
+                    <p class="mb-3" style="font-family: 'Gotham bold'; color: #535353;">Logo entraremos em contato.</p>
 
-                  <a href="/contato" class="btn" style="font-family: 'Gotham bold'; background: #f8a924; color: white; border-radius: 20px;">Retornar</a>
-                </div>
-              `);
-            } else {
-              $("#contact-us-form").html(null);
-              $(".send-your-thoughts").html(null);
-              $(".contact-us-div").html(`
-                <div>
-                  <p class="mt-3 mb-3" style="font-family: 'Gotham bold'; color: #535353;">Falha ao enviar mensagem.</p>
-                  <p class="mb-3" style="font-family: 'Gotham bold'; color: #535353;">Por favor, tente novamente.</p>
+                    <a href="/contato" class="btn" style="font-family: 'Gotham bold'; background: #f8a924; color: white; border-radius: 20px;">Retornar</a>
+                  </div>
+                `);
+              } else {
+                $("#contact-us-form").html(null);
+                $(".send-your-thoughts").html(null);
+                $(".contact-us-div").html(`
+                  <div>
+                    <p class="mt-3 mb-3" style="font-family: 'Gotham bold'; color: #535353;">Falha ao enviar mensagem.</p>
+                    <p class="mb-3" style="font-family: 'Gotham bold'; color: #535353;">Por favor, tente novamente.</p>
 
-                  <a href="/contato" class="btn" style="font-family: 'Gotham bold'; background: #f8a924; color: white; border-radius: 20px;">Retornar</a>
-                </div>
-              `);
-            }
-          },
+                    <a href="/contato" class="btn" style="font-family: 'Gotham bold'; background: #f8a924; color: white; border-radius: 20px;">Retornar</a>
+                  </div>
+                `);
+              }
+            },
+          });
         });
       }
     });
@@ -911,20 +943,14 @@ var ContactEmailIsValid = true;
       });
     });
 
-    grecaptcha.ready(function () {
-      grecaptcha
-        .execute("6Lf1vDceAAAAACfQThQ_giVw6d0zuetRgNpcmhWQ", {
-          action: "submit",
-        })
-        .then(function (token) {
-          if (typeof token !== "undefined" && token !== null && token !== "") {
-            let generate_token_element =
-              document.getElementById("generate_token");
-            if (generate_token_element) {
-              generate_token_element.value = token;
-            }
-          }
-        });
+    executeRecaptcha("submit").then(function (token) {
+      if (typeof token !== "undefined" && token !== null && token !== "") {
+        let generate_token_element =
+          document.getElementById("generate_token");
+        if (generate_token_element) {
+          generate_token_element.value = token;
+        }
+      }
     });
 
     $("#clube_email_notification_form").validate({

@@ -49,6 +49,11 @@ get_header();
 
                 <input type="hidden" name="generate_token" id="generate_token">
 
+                <div style="position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden;" aria-hidden="true">
+                    <label for="contact_us_company">Empresa</label>
+                    <input type="text" name="contact_us_company" id="contact_us_company" tabindex="-1" autocomplete="off">
+                </div>
+
                 <input type="hidden" name="logged_user" id="logged_user" value="<?php echo is_user_logged_in() ? get_current_user_id() : false; ?>">
 
                 <?php wp_nonce_field('woocommerce-contact-us', 'woocommerce-contact-us-nonce'); ?>
