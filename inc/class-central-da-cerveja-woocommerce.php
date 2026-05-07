@@ -17,6 +17,10 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
      */
     final class Central_Da_Cerveja_WooCommerce
     {
+        private const CDC_RECAPTCHA_SECRET = '6Lf1vDceAAAAAF595UQkxmhyjl94xDWv_A7-nCtb';
+        private const CDC_RECAPTCHA_MIN_SCORE = 0.7;
+        private const CDC_RATE_LIMIT_SECONDS = 180;
+
         private $conn;
         private $cached_shipping_methods = null;
         private $tax_card = 0;
@@ -251,6 +255,120 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 }
             }
             return null;
+        }
+
+        private function get_request_ip(): string
+        {
+            $ip_candidates = [
+                $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
+                $_SERVER['HTTP_CLIENT_IP'] ?? '',
+                $_SERVER['REMOTE_ADDR'] ?? '',
+            ];
+
+            foreach ($ip_candidates as $candidate) {
+                if (empty($candidate)) {
+                    continue;
+                }
+
+                $parts = array_map('trim', explode(',', (string) $candidate));
+                foreach ($parts as $part) {
+                    if (filter_var($part, FILTER_VALIDATE_IP)) {
+                        return $part;
+                    }
+                }
+            }
+
+            return '0.0.0.0';
+        }
+
+        private function is_rate_limited(string $context, int $ttl = self::CDC_RATE_LIMIT_SECONDS): bool
+        {
+            $ip = $this->get_request_ip();
+            $key = 'cdc_rate_' . sanitize_key($context) . '_' . md5($ip);
+
+            if (get_transient($key)) {
+                return true;
+            }
+
+            set_transient($key, 1, $ttl);
+            return false;
+        }
+
+        private function log_security_block(string $context, string $block_type, array $extra = []): void
+        {
+            $ip = $this->get_request_ip();
+            $payload = array_merge(
+                [
+                    'context' => sanitize_key($context),
+                    'block' => sanitize_key($block_type),
+                    'ip_hash' => hash('sha256', $ip . wp_salt('nonce')),
+                    'timestamp' => current_time('mysql'),
+                ],
+                $extra
+            );
+
+            error_log('[CDC_SECURITY_BLOCK] ' . wp_json_encode($payload));
+        }
+
+        private function verify_recaptcha_v3(string $token, string $expected_action): array
+        {
+            if (empty($token)) {
+                return [
+                    'success' => false,
+                    'reason' => 'missing_token',
+                    'score' => 0,
+                ];
+            }
+
+            $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
+                'timeout' => 8,
+                'body' => [
+                    'secret' => self::CDC_RECAPTCHA_SECRET,
+                    'response' => $token,
+                ],
+            ]);
+
+            if (is_wp_error($response)) {
+                return [
+                    'success' => false,
+                    'reason' => 'request_failed',
+                    'score' => 0,
+                ];
+            }
+
+            $body = json_decode((string) wp_remote_retrieve_body($response), true);
+            $score = isset($body['score']) ? (float) $body['score'] : 0.0;
+            $action = isset($body['action']) ? sanitize_text_field($body['action']) : '';
+
+            if (empty($body['success'])) {
+                return [
+                    'success' => false,
+                    'reason' => 'validation_failed',
+                    'score' => $score,
+                ];
+            }
+
+            if (!empty($expected_action) && !empty($action) && $action !== $expected_action) {
+                return [
+                    'success' => false,
+                    'reason' => 'action_mismatch',
+                    'score' => $score,
+                ];
+            }
+
+            if ($score < self::CDC_RECAPTCHA_MIN_SCORE) {
+                return [
+                    'success' => false,
+                    'reason' => 'low_score',
+                    'score' => $score,
+                ];
+            }
+
+            return [
+                'success' => true,
+                'reason' => 'ok',
+                'score' => $score,
+            ];
         }
 
         public function remove_from_session_payments_gateway()
@@ -2013,7 +2131,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
          */
         public function user_register()
         {
-            // Verifica nonce de segurança
+            // 1. Nonce
             if (empty($_POST['woocommerce_nonce']) || !wp_verify_nonce($_POST['woocommerce_nonce'], 'woocommerce-register')) {
                 wp_send_json_error([
                     'status'  => false,
@@ -2021,7 +2139,36 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 ], 400);
             }
 
-            // Campos obrigatórios
+            // 2. Honeypot — bots preenchem campos ocultos
+            if (!empty($_POST['register_company'])) {
+                $this->log_security_block('user_register', 'honeypot');
+                wp_send_json_error([
+                    'status'  => false,
+                    'message' => __('Falha na verificação de segurança.', 'central-da-cerveja')
+                ], 400);
+            }
+
+            // 3. Rate limit por IP
+            if ($this->is_rate_limited('user_register')) {
+                $this->log_security_block('user_register', 'rate_limit');
+                wp_send_json_error([
+                    'status'  => false,
+                    'message' => __('Muitas tentativas. Aguarde alguns minutos e tente novamente.', 'central-da-cerveja')
+                ], 429);
+            }
+
+            // 4. reCAPTCHA v3 com score >= 0.7
+            $captcha_token = isset($_POST['recaptcha_token']) ? sanitize_text_field(wp_unslash($_POST['recaptcha_token'])) : '';
+            $captcha       = $this->verify_recaptcha_v3($captcha_token, 'user_register');
+            if (!$captcha['success']) {
+                $this->log_security_block('user_register', 'recaptcha_' . $captcha['reason'], ['score' => $captcha['score']]);
+                wp_send_json_error([
+                    'status'  => false,
+                    'message' => __('Verificação de segurança falhou. Tente novamente.', 'central-da-cerveja')
+                ], 403);
+            }
+
+            // 5. Campos obrigatórios
             $required_fields = ['email', 'password', 'first_name', 'last_name', 'address', 'city', 'state', 'postcode', 'phone'];
             foreach ($required_fields as $field) {
                 if (empty($_POST[$field])) {
@@ -2032,16 +2179,17 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 }
             }
 
-            $base_username = sanitize_user(explode('@', $email)[0]);
-            $random_suffix = strtolower(substr(str_shuffle('abcdefghijklmnopqrstuvwxyz'), 0, 4));
-
+            // 6. Sanitização — email definido ANTES de ser usado no username
             $email    = sanitize_email($_POST['email']);
             $password = sanitize_text_field($_POST['password']);
-            $username = $base_username . '_' . $random_suffix;
             $first    = sanitize_text_field($_POST['first_name']);
             $last     = sanitize_text_field($_POST['last_name']);
 
-            // Verifica se já existe usuário com o e-mail informado
+            $base_username = sanitize_user(explode('@', $email)[0]);
+            $random_suffix = strtolower(substr(str_shuffle('abcdefghijklmnopqrstuvwxyz'), 0, 4));
+            $username      = $base_username . '_' . $random_suffix;
+
+            // 7. Verifica se já existe usuário com o e-mail informado
             if (email_exists($email)) {
                 wp_send_json_error([
                     'status'  => false,
@@ -2049,7 +2197,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 ], 409);
             }
 
-            // Cria o usuário WooCommerce
+            // 8. Cria o usuário WooCommerce
             $user_id = wc_create_new_customer($email, $username, $password);
 
             if (is_wp_error($user_id)) {
@@ -2059,7 +2207,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 ], 500);
             }
 
-            // Atualiza metadados (billing e shipping)
+            // 9. Atualiza metadados (billing e shipping)
             $meta_fields = [
                 'nickname'              => preg_replace("/\s+/", "", strtolower($first)),
                 'first_name'            => $first,
@@ -2090,7 +2238,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 }
             }
 
-            // Autentica o usuário recém-criado
+            // 10. Autentica o usuário recém-criado
             $user = wp_signon([
                 'user_login'    => $email,
                 'user_password' => $password,
@@ -2593,62 +2741,92 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 
         function cdc_contact_us()
         {
-            $url = 'https://www.google.com/recaptcha/api/siteverify';
-            $secret = '6Lf1vDceAAAAAF595UQkxmhyjl94xDWv_A7-nCtb';
-            $response = $_POST['token'];
-
-            $request = file_get_contents($url . '?secret=' . $secret . '&response=' . $response);
-
-            $result = json_decode($request);
-            if ($result->success == false) {
-                wp_send_json(array(
-                    'status' => false,
-                ));
+            // 1. Nonce
+            if (empty($_POST['woocommerce_nonce']) || !wp_verify_nonce($_POST['woocommerce_nonce'], 'woocommerce-contact-us')) {
+                wp_send_json(['status' => false]);
             }
 
-            if (!wp_verify_nonce($_POST['woocommerce_nonce'], 'woocommerce-contact-us')) {
-                wp_send_json(array(
-                    'status' => false,
-                ));
+            // 2. Honeypot — bots preenchem campos ocultos
+            if (!empty($_POST['contact_us_company'])) {
+                $this->log_security_block('contact_us', 'honeypot');
+                wp_send_json(['status' => false]);
             }
 
+            // 3. Rate limit por IP
+            if ($this->is_rate_limited('contact_us')) {
+                $this->log_security_block('contact_us', 'rate_limit');
+                wp_send_json(['status' => false]);
+            }
+
+            // 4. reCAPTCHA v3 com score >= 0.7
+            $token  = isset($_POST['token']) ? sanitize_text_field(wp_unslash($_POST['token'])) : '';
+            $captcha = $this->verify_recaptcha_v3($token, 'contact_us');
+            if (!$captcha['success']) {
+                $this->log_security_block('contact_us', 'recaptcha_' . $captcha['reason'], ['score' => $captcha['score']]);
+                wp_send_json(['status' => false]);
+            }
+
+            // 5. Sanitização de entradas
+            $contact_name       = sanitize_text_field(wp_unslash($_POST['name']    ?? ''));
+            $contact_phone      = sanitize_text_field(wp_unslash($_POST['phone']   ?? ''));
+            $contact_email      = sanitize_email(wp_unslash($_POST['email']        ?? ''));
+            $contact_subject    = sanitize_text_field(wp_unslash($_POST['subject'] ?? ''));
+            $contact_message    = sanitize_textarea_field(wp_unslash($_POST['message'] ?? ''));
+            $contact_logged_user = absint($_POST['logged_user'] ?? 0);
+
+            if (!filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
+                wp_send_json(['status' => false]);
+            }
+
+            // 6. Monta payload para o template (sem $_POST direto)
+            $contact_us_payload = [
+                'name'        => $contact_name,
+                'phone'       => $contact_phone,
+                'email'       => $contact_email,
+                'message'     => $contact_message,
+                'logged_user' => $contact_logged_user,
+            ];
+
+            // 7. Destinatários
+            $settings = get_option('woocommerce_cdc_contact_us_settings');
+            if (empty($settings['enabled']) || $settings['enabled'] !== 'yes') {
+                wp_send_json(['status' => false]);
+            }
+
+            $emails = preg_split('/\s*,\s*/', $settings['recipient'] ?? '', -1, PREG_SPLIT_DELIM_CAPTURE);
+            $to     = [];
+            foreach ($emails as $email) {
+                if (filter_var(trim($email), FILTER_VALIDATE_EMAIL)) {
+                    $to[] = trim($email);
+                }
+            }
+
+            if (empty($to)) {
+                wp_send_json(['status' => false]);
+            }
+
+            // 8. Template de e-mail
+            ob_start();
+            include get_template_directory() . '/woocommerce/emails/contact-us.php';
+            $template = ob_get_clean();
+
+            // 9. Headers hardened — From estático, Reply-To só se e-mail válido
+            $headers   = [];
             $headers[] = 'Content-Type: text/html; charset=UTF-8';
             $headers[] = 'From: Central da Cerveja <noreply@centraldacerveja.com.br>';
-            $headers[] = 'Bcc: ' . esc_attr($_POST['name']) . ' <' . esc_attr($_POST['email']) . '>';
-            $headers[] = 'Reply-To: ' . esc_attr($_POST['name']) . ' <' . esc_attr($_POST['email']) . '>';
+            $headers[] = 'Reply-To: ' . esc_attr($contact_name) . ' <' . esc_attr($contact_email) . '>';
+            $headers[] = 'X-Mailer: CDC-Theme/1.0';
 
-            $subject = $_POST['subject'];
-
-            $emails = preg_split('/\s*,\s*/', get_option('woocommerce_cdc_contact_us_settings')['recipient'], -1, PREG_SPLIT_DELIM_CAPTURE);
-
-            if (!empty($emails)) {
-                $to = array();
-
-                foreach ($emails as $email) {
-                    if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                        array_push($to, $email);
-                    }
-                }
-
-                ob_start();
-                include get_template_directory() . "/woocommerce/emails/contact-us.php";
-                $template = ob_get_contents();
-                ob_end_clean();
-            }
-
+            // 10. Hook com dados já sanitizados (sem $_POST)
             do_action('mail_contact_us', [
-                'post' => $_POST,
-                'emails' => $emails,
+                'payload' => $contact_us_payload,
+                'emails'  => $to,
             ]);
 
-            if (wp_mail($to, $subject, $template, $headers) && get_option('woocommerce_cdc_contact_us_settings')['enabled'] == 'yes') {
-                wp_send_json(array(
-                    'status' => true,
-                ));
+            if (wp_mail($to, $contact_subject, $template, $headers)) {
+                wp_send_json(['status' => true]);
             } else {
-                wp_send_json(array(
-                    'status' => false,
-                ));
+                wp_send_json(['status' => false]);
             }
         }
 

@@ -57,6 +57,13 @@
 </head>
 
 <body style="background-color: #FFFFFF; margin: 0; padding: 0; -webkit-text-size-adjust: none; text-size-adjust: none;">
+    <?php
+    $contact_name = isset($contact_us_payload['name']) ? $contact_us_payload['name'] : '';
+    $contact_phone = isset($contact_us_payload['phone']) ? $contact_us_payload['phone'] : '';
+    $contact_email = isset($contact_us_payload['email']) ? $contact_us_payload['email'] : '';
+    $contact_message = isset($contact_us_payload['message']) ? $contact_us_payload['message'] : '';
+    $contact_logged_user = isset($contact_us_payload['logged_user']) ? (int) $contact_us_payload['logged_user'] : 0;
+    ?>
     <table class="nl-container" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #FFFFFF;">
         <tbody>
             <tr>
@@ -88,7 +95,7 @@
                                                             <td>
                                                                 <div style="font-family: sans-serif">
                                                                     <div style="font-size: 12px; mso-line-height-alt: 14.399999999999999px; color: #393d47; line-height: 1.2; font-family: Arial, Helvetica Neue, Helvetica, sans-serif;">
-                                                                        <p style="margin: 0; font-size: 12px;"><span style="font-size:14px;"><strong>Nome: </strong><?php echo $_POST['name']; ?></span></p>
+                                                                        <p style="margin: 0; font-size: 12px;"><span style="font-size:14px;"><strong>Nome: </strong><?php echo esc_html($contact_name); ?></span></p>
                                                                     </div>
                                                                 </div>
                                                             </td>
@@ -99,7 +106,7 @@
                                                             <td>
                                                                 <div style="font-family: sans-serif">
                                                                     <div style="font-size: 14px; mso-line-height-alt: 16.8px; color: #393d47; line-height: 1.2; font-family: Arial, Helvetica Neue, Helvetica, sans-serif;">
-                                                                        <p style="margin: 0; font-size: 14px;"><strong>Telefone:</strong> <?php echo $_POST['phone']; ?></p>
+                                                                        <p style="margin: 0; font-size: 14px;"><strong>Telefone:</strong> <?php echo esc_html($contact_phone); ?></p>
                                                                     </div>
                                                                 </div>
                                                             </td>
@@ -110,7 +117,7 @@
                                                             <td>
                                                                 <div style="font-family: sans-serif">
                                                                     <div style="font-size: 14px; mso-line-height-alt: 16.8px; color: #393d47; line-height: 1.2; font-family: Arial, Helvetica Neue, Helvetica, sans-serif;">
-                                                                        <p style="margin: 0; font-size: 14px;"><strong>E-mail:</strong> <?php echo $_POST['email']; ?></p>
+                                                                        <p style="margin: 0; font-size: 14px;"><strong>E-mail:</strong> <?php echo esc_html($contact_email); ?></p>
                                                                     </div>
                                                                 </div>
                                                             </td>
@@ -133,19 +140,19 @@
                                                             <td>
                                                                 <div style="font-family: sans-serif">
                                                                     <div style="font-size: 14px; mso-line-height-alt: 16.8px; color: #393d47; line-height: 1.2; font-family: Arial, Helvetica Neue, Helvetica, sans-serif;">
-                                                                        <p style="margin: 0; font-size: 14px;"><?php echo $_POST['message'] ?></p>
+                                                                        <p style="margin: 0; font-size: 14px;"><?php echo nl2br(esc_html($contact_message)); ?></p>
                                                                     </div>
                                                                 </div>
                                                             </td>
                                                         </tr>
                                                     </table>
-                                                    <?php if (!empty($_POST['logged_user'])) : ?>
+                                                    <?php if (!empty($contact_logged_user)) : ?>
                                                         <table class="text_block" width="100%" border="0" cellpadding="10" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;">
                                                             <tr>
                                                                 <td>
                                                                     <div style="font-family: sans-serif">
                                                                         <div style="font-size: 14px; mso-line-height-alt: 16.8px; color: #393d47; line-height: 1.2; font-family: Arial, Helvetica Neue, Helvetica, sans-serif;">
-                                                                            <p style="margin: 0; font-size: 14px;"><strong>Link do perfil:</strong> <a target="_blank" href="<?php echo home_url(); ?>/wp-admin/user-edit.php?user_id=<?php echo $_POST['logged_user']; ?>">Ver</a></p>
+                                                                            <p style="margin: 0; font-size: 14px;"><strong>Link do perfil:</strong> <a target="_blank" href="<?php echo esc_url(home_url('/wp-admin/user-edit.php?user_id=' . $contact_logged_user)); ?>">Ver</a></p>
                                                                         </div>
                                                                     </div>
                                                                 </td>
