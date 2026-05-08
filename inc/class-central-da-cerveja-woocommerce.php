@@ -18,7 +18,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
     final class Central_Da_Cerveja_WooCommerce
     {
         private const CDC_RECAPTCHA_SECRET = '6Lf1vDceAAAAAF595UQkxmhyjl94xDWv_A7-nCtb';
-        private const CDC_RECAPTCHA_MIN_SCORE = 0.7;
+        private const CDC_RECAPTCHA_MIN_SCORE = 0.3; // Em prod subir para 0.7
         private const CDC_RATE_LIMIT_SECONDS = 180;
 
         private $conn;
@@ -307,7 +307,12 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 $extra
             );
 
-            error_log('[CDC_SECURITY_BLOCK] ' . wp_json_encode($payload));
+            $logger = wc_get_logger();
+
+			$logger->error(
+				'[CDC_SECURITY_BLOCK] ' . wp_json_encode($payload),
+				array( 'source' => 'cdc-security' )
+			);
         }
 
         private function verify_recaptcha_v3(string $token, string $expected_action): array
@@ -2742,28 +2747,28 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
         function cdc_contact_us()
         {
             // 1. Nonce
-            if (empty($_POST['woocommerce_nonce']) || !wp_verify_nonce($_POST['woocommerce_nonce'], 'woocommerce-contact-us')) {
-                wp_send_json(['status' => false]);
+            if (empty($_POST['woocommerce-contact-us-nonce']) || !wp_verify_nonce($_POST['woocommerce-contact-us-nonce'], 'woocommerce-contact-us-nonce')) {
+                wp_send_json(['status' => false, 'nonce' => 'Falha de na verificação do nonce.']);
             }
 
-            // 2. Honeypot — bots preenchem campos ocultos
+            // 2. Honeypot - bots preenchem campos ocultos
             if (!empty($_POST['contact_us_company'])) {
                 $this->log_security_block('contact_us', 'honeypot');
-                wp_send_json(['status' => false]);
+                wp_send_json(['status' => false, 'honeypot' => 'Bloqueio interno!']);
             }
 
             // 3. Rate limit por IP
             if ($this->is_rate_limited('contact_us')) {
                 $this->log_security_block('contact_us', 'rate_limit');
-                wp_send_json(['status' => false]);
+                wp_send_json(['status' => false,'rate_limit' => 'Limite de envios atingido, aguarde alguns minutos!']);
             }
 
-            // 4. reCAPTCHA v3 com score >= 0.7
+            // 4. reCAPTCHA v3 com score >= 0.3
             $token  = isset($_POST['token']) ? sanitize_text_field(wp_unslash($_POST['token'])) : '';
             $captcha = $this->verify_recaptcha_v3($token, 'contact_us');
             if (!$captcha['success']) {
                 $this->log_security_block('contact_us', 'recaptcha_' . $captcha['reason'], ['score' => $captcha['score']]);
-                wp_send_json(['status' => false]);
+                wp_send_json(['status' => false, 'reCAPTCHA' => 'Falha na validação do reCAPTCHA.']);
             }
 
             // 5. Sanitização de entradas
@@ -2775,7 +2780,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             $contact_logged_user = absint($_POST['logged_user'] ?? 0);
 
             if (!filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
-                wp_send_json(['status' => false]);
+                wp_send_json(['status' => false,'message' => 'E-mail inválido!']);
             }
 
             // 6. Monta payload para o template (sem $_POST direto)

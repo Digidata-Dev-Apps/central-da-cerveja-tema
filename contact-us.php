@@ -56,7 +56,7 @@ get_header();
 
                 <input type="hidden" name="logged_user" id="logged_user" value="<?php echo is_user_logged_in() ? get_current_user_id() : false; ?>">
 
-                <?php wp_nonce_field('woocommerce-contact-us', 'woocommerce-contact-us-nonce'); ?>
+                <?php wp_nonce_field('woocommerce-contact-us-nonce', 'woocommerce-contact-us-nonce'); ?>
 
                 <div class="mb-3">
                     <button type="submit" class="btn contact-us-submit">Enviar</button>

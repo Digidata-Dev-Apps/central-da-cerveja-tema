@@ -41,7 +41,7 @@ var ContactEmailIsValid = true;
     };
   }
 
-  
+
 
   $(document).ready(function () {
     $.validator.addMethod(
@@ -143,10 +143,10 @@ var ContactEmailIsValid = true;
       });
 
     var SPMaskBehavior = function (val) {
-        return val.replace(/\D/g, "").length === 11
-          ? "(00) 00000-0000"
-          : "(00) 0000-00009";
-      },
+      return val.replace(/\D/g, "").length === 11
+        ? "(00) 00000-0000"
+        : "(00) 0000-00009";
+    },
       spOptions = {
         onKeyPress: function (val, e, field, options) {
           field.mask(SPMaskBehavior.apply({}, arguments), options);
@@ -797,7 +797,7 @@ var ContactEmailIsValid = true;
               message: $("#contact_us_message").val(),
               logged_user: $("#logged_user").val(),
               contact_us_company: $("#contact_us_company").val(),
-              woocommerce_nonce: $("#woocommerce-contact-us-nonce").val(),
+              "woocommerce-contact-us-nonce": $("#woocommerce-contact-us-nonce").val(),
               token: token || $("#generate_token").val(),
             },
             success: function (response) {
