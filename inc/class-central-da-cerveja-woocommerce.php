@@ -1461,13 +1461,20 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 'shipping_with_tax'                   => 'Frete com T. Cartão e Adic.',
                 'shipping_tax_card'                   => 'Taxa de Cartão (%)',
                 'shipping_fee_additional_percentage'  => 'Taxa adicional (%)',
-                'shipping_fee_additional'             => 'Taxa adicional'
+                'shipping_fee_additional'             => 'Taxa adicional',
             ];
+
+            $item_data = $item->get_data();
+            if (isset($item_data['method_id']) && $item_data['method_id'] == 'subscription-shipping') {
+                $keys['shipping_real_cost'] = 'Frete Transportadora (BitHome - Jad log)';
+            }
+          
             echo '<div class="view">
             <table cellspacing="0" class="display_meta">
                 <tbody>';
 
             foreach ($keys as $key => $label) {
+        
                 $value = $item->get_meta($key);
                 if ($value !== '' && $value !== null) {
                     echo '<tr>
