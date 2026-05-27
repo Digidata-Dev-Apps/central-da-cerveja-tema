@@ -1466,7 +1466,51 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
 
             $item_data = $item->get_data();
             if (isset($item_data['method_id']) && $item_data['method_id'] == 'subscription-shipping') {
-                $keys['shipping_real_cost'] = 'Frete Transportadora (BitHome - Jad log)';
+                $shipping_company = isset($item_data['shipping_company']) && !empty($item_data['shipping_company']) ? $item_data['shipping_company'] : 'BitHome';
+
+                if ($shipping_company == 'BitHome') {
+                    $services = [
+                        [
+                            'code' => '04669',
+                            'name' => 'PAC'
+                        ],
+                        [
+                            'code' => '04162',
+                            'name' => 'SEDEX'
+                        ],
+                        [
+                            'code' => '99998',
+                            'name' => 'MOTOBOY'
+                        ],
+                        [
+                            'code' => '99997',
+                            'name' => 'TOTAL EXPRESS'
+                        ],
+                        [
+                            'code' => '99996',
+                            'name' => 'JAD LOG'
+                        ],
+                        [
+                            'code' => '99995',
+                            'name' => 'BRASPRESS'
+                        ],
+                        [
+                            'code' => '99994',
+                            'name' => 'J&T'
+                        ],
+                        [
+                            'code' => '99993',
+                            'name' => 'LOGGI'
+                        ]
+                    ];
+
+                    $chosen_method = array_column($services, 'name', 'code');
+                    $chosen_name = $chosen_method[$item->get_meta('shipping_code')];
+
+                    $shipping_company .= " - $chosen_name";
+                }
+
+                $keys['shipping_real_cost'] = "Frete Transportadora ($shipping_company)";
             }
           
             echo '<div class="view">
