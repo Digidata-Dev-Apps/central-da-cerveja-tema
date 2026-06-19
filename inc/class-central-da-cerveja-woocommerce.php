@@ -231,6 +231,8 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             add_action('woocommerce_checkout_create_order', array($this, 'save_rodonaves_protocol_number'), 10, 2);
 
             add_action('woocommerce_before_calculate_totals', array($this, 'verify_if_zipcode_changed'), 10, 1);
+
+            add_action('wp_footer', array($this, 'custom_checkout_shipping_cpf_mask'));
         }
 
         private function get_wc_shipping_methods()
@@ -1195,6 +1197,22 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             );
 
             return $fields;
+        }
+
+        public function custom_checkout_shipping_cpf_mask() {
+            if ( is_checkout() ) {
+                ?>
+                <script type="text/javascript">
+                    jQuery(document).ready(function($) {
+                        $('#shipping_cpf').mask('000.000.000-00');
+
+                        $(document).body.on('updated_checkout', function() {
+                            $('#shipping_cpf').mask('000.000.000-00');
+                        });
+                    });
+                </script>
+                <?php
+            }
         }
 
         public function save_order_value($order_id, $order)
@@ -3207,6 +3225,14 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 }
             }
 
+            if (!empty($fields['shipping_cpf'])) {
+                $shipping_cpf = preg_replace('/[^0-9]/', '', $fields['shipping_cpf']);
+               
+                if (!$this->is_valid_cpf($shipping_cpf)) {
+                    $errors->add( 'shipping_cpf_error', '<li><b>O campo "CPF" do endereço de entrega</b> é um campo inválido.</li>' );
+                }   
+            }
+
             if (!empty($fields['billing_phone'])) {
                 if (!$phone_is_valid) {
                     $invalid_phone = '<li><b>O campo "Celular" do endereço de faturamento</b> é um campo inválido.</li>';
@@ -3222,6 +3248,23 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                     }
                 }
             }
+        }
+
+        public function is_valid_cpf($cpf) {
+            if (strlen($cpf) != 11 || preg_match('/(\d)\1{10}/', $cpf)) {
+                return false;
+            }
+
+            for ($t = 9; $t < 11; $t++) {
+                for ($d = 0, $c = 0; $c < $t; $c++) {
+                    $d += $cpf[$c] * (($t + 1) - $c);
+                }
+                $d = ((10 * $d) % 11) % 10;
+                if ($cpf[$c] != $d) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         public function is_cpf_registered($cpf)
