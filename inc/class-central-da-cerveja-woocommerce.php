@@ -233,6 +233,85 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
             add_action('woocommerce_before_calculate_totals', array($this, 'verify_if_zipcode_changed'), 10, 1);
 
             add_action('wp_footer', array($this, 'custom_checkout_shipping_cpf_mask'));
+            
+            add_filter( 'woocommerce_admin_shipping_fields', array($this, 'remove_required_admin_cpf'));
+
+            add_filter('woocommerce_is_purchasable', array($this, 'restrict_purchase_to_admin'), 10, 2);
+
+            add_action('template_redirect', array($this, 'block_store_for_non_admin'));
+
+            add_action('wp', array($this, 'remove_purchase_buttons_for_non_admin'));
+
+            add_filter('woocommerce_add_to_cart_validation', array($this, 'validate_add_to_cart_for_non_admin'), 10, 3);
+
+            add_action('admin_init', array($this, 'restrict_admin_access_for_non_admin'));
+
+            add_action('wp_loaded', array($this, 'empty_cart_for_non_admin'));
+
+            add_action('woocommerce_before_checkout_process', array($this, 'prevent_checkout_execution_for_non_admin'));
+        }
+
+        public function restrict_purchase_to_admin($is_purchasable, $product) {
+            if (!current_user_can('administrator')) {
+                return false;
+            }
+            return $is_purchasable;
+        }
+
+        public function validate_add_to_cart_for_non_admin($passed, $product_id, $quantity) {
+            if (!current_user_can('administrator')) {
+                return false;
+            }
+            return $passed;
+        }
+
+        public function block_store_for_non_admin() {
+            if (is_page('atividades-encerradas')) {
+                return;
+            }
+
+            if (!current_user_can('administrator')) {
+                wp_safe_redirect(home_url('/atividades-encerradas'));
+                exit;
+            }
+        }
+
+        public function remove_purchase_buttons_for_non_admin() {
+            if (!current_user_can('administrator')) {
+                remove_action('woocommerce_after_shop_loop_item', 'woocommerce_template_loop_add_to_cart', 10);
+                remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 33);
+            }
+        }
+
+        public function restrict_admin_access_for_non_admin() {
+            if (wp_doing_ajax()) {
+                return;
+            }
+
+            if (!current_user_can('administrator')) {
+                wp_safe_redirect(home_url('/atividades-encerradas'));
+                exit;
+            }
+        }
+
+        public function empty_cart_for_non_admin() {
+            if (!current_user_can('administrator') && function_exists('WC') && WC()->cart) {
+                WC()->cart->empty_cart();
+            }
+        }
+
+        public function prevent_checkout_execution_for_non_admin() {
+            if (!current_user_can('administrator')) {
+                wp_safe_redirect(home_url('/atividades-encerradas'));
+                exit;
+            }
+        }
+
+        public function remove_required_admin_cpf( $fields ) {
+            if (isset($fields['cpf'])) {
+                unset( $fields['cpf']['required']);
+            }
+            return $fields;
         }
 
         private function get_wc_shipping_methods()
