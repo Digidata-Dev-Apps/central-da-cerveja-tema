@@ -288,7 +288,7 @@ if (!class_exists('Central_Da_Cerveja_WooCommerce')) {
                 return;
             }
 
-            if (!current_user_can('administrator')) {
+            if (!current_user_can('administrator') && !current_user_can('stock_supervisor') && !current_user_can('warehouse') && !current_user_can('supplier')) {
                 wp_safe_redirect(home_url('/atividades-encerradas'));
                 exit;
             }
